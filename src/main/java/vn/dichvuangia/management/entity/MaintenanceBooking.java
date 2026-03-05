@@ -1,13 +1,15 @@
 package vn.dichvuangia.management.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import vn.dichvuangia.management.common.enums.BookingStatus;
 
 import java.time.LocalDateTime;
 
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @Entity
 @Table(name = "maintenance_bookings") // Bảng đặt lịch bảo trì
@@ -48,5 +50,18 @@ public class MaintenanceBooking {
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof MaintenanceBooking)) return false;
+        MaintenanceBooking other = (MaintenanceBooking) o;
+        return id != null && id.equals(other.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return java.util.Objects.hashCode(id);
     }
 }
