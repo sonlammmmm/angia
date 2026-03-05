@@ -9,17 +9,12 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @Entity
-@Table(name = "customers")
+@Table(name = "customers") // Bảng khách hàng
 public class Customer {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    // NULL nếu khách qua hotline, không có tài khoản web
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", unique = true)
-    private User user;
 
     @Column(name = "full_name", nullable = false)
     private String fullName;

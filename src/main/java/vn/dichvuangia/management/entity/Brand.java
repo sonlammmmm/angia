@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @Entity
-@Table(name = "brands")
+@Table(name = "brands") // Bảng thương hiệu
 public class Brand {
 
     @Id

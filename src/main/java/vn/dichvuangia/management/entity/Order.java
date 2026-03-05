@@ -3,7 +3,7 @@ package vn.dichvuangia.management.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import vn.dichvuangia.management.common.OrderStatus;
+import vn.dichvuangia.management.common.enums.OrderStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -13,7 +13,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @Entity
-@Table(name = "orders")
+@Table(name = "orders") // Bảng đơn hàng
 public class Order {
 
     @Id

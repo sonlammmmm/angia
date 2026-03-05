@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 @Data
 @NoArgsConstructor
 @Entity
-@Table(name = "order_items")
+@Table(name = "order_items") // Bảng chi tiết đơn hàng
 public class OrderItem {
 
     @Id

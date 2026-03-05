@@ -4,14 +4,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.validation.FieldError;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import vn.dichvuangia.management.common.ApiResponse;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Slf4j
 @RestControllerAdvice
@@ -20,7 +20,7 @@ public class GlobalExceptionHandler {
     // ── 404 ───────────────────────────────────────────────────────────────────
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ApiResponse<Void>> handleResourceNotFound(ResourceNotFoundException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleNotFound(ResourceNotFoundException ex) {
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.error(ex.getMessage(), "RESOURCE_NOT_FOUND"));
@@ -28,15 +28,15 @@ public class GlobalExceptionHandler {
 
     // ── 400 ───────────────────────────────────────────────────────────────────
 
-    @ExceptionHandler(AssetNotActiveException.class)
-    public ResponseEntity<ApiResponse<Void>> handleAssetNotActive(AssetNotActiveException ex) {
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<ApiResponse<Void>> handleStock(InsufficientStockException ex) {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(ex.getMessage(), "ASSET_NOT_ACTIVE"));
+                .body(ApiResponse.error(ex.getMessage(), "INSUFFICIENT_STOCK"));
     }
 
     @ExceptionHandler(InvalidStatusTransitionException.class)
-    public ResponseEntity<ApiResponse<Void>> handleInvalidStatusTransition(InvalidStatusTransitionException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleTransition(InvalidStatusTransitionException ex) {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(ex.getMessage(), "INVALID_STATUS_TRANSITION"));
@@ -44,26 +44,29 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleValidation(MethodArgumentNotValidException ex) {
-        Map<String, String> fieldErrors = ex.getBindingResult()
-                .getFieldErrors()
-                .stream()
-                .collect(Collectors.toMap(
-                        FieldError::getField,
-                        fe -> fe.getDefaultMessage() == null ? "Không hợp lệ" : fe.getDefaultMessage(),
-                        (first, second) -> first   // keep first message if duplicate field
-                ));
+        Map<String, String> errors = new LinkedHashMap<>();
+        ex.getBindingResult().getFieldErrors()
+                .forEach(e -> errors.put(e.getField(),
+                        e.getDefaultMessage() == null ? "Không hợp lệ" : e.getDefaultMessage()));
 
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.<Map<String, String>>builder()
                         .status("error")
-                        .message("Dữ liệu đầu vào không hợp lệ")
-                        .data(fieldErrors)
+                        .message("Dữ liệu không hợp lệ")
+                        .data(errors)
                         .errorCode("VALIDATION_ERROR")
                         .build());
     }
 
     // ── 403 ───────────────────────────────────────────────────────────────────
+
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDisabled(DisabledException ex) {
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error("Tài khoản đã bị khóa", "ACCOUNT_DISABLED"));
+    }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
@@ -74,18 +77,11 @@ public class GlobalExceptionHandler {
 
     // ── 409 ───────────────────────────────────────────────────────────────────
 
-    @ExceptionHandler(MaintenanceAlreadyCompletedException.class)
-    public ResponseEntity<ApiResponse<Void>> handleMaintenanceAlreadyCompleted(MaintenanceAlreadyCompletedException ex) {
+    @ExceptionHandler(BookingAlreadyCompletedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBookingCompleted(BookingAlreadyCompletedException ex) {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
-                .body(ApiResponse.error(ex.getMessage(), "MAINTENANCE_ALREADY_COMPLETED"));
-    }
-
-    @ExceptionHandler(DuplicateMaintenanceScheduleException.class)
-    public ResponseEntity<ApiResponse<Void>> handleDuplicateSchedule(DuplicateMaintenanceScheduleException ex) {
-        return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(ApiResponse.error(ex.getMessage(), "DUPLICATE_SCHEDULE"));
+                .body(ApiResponse.error(ex.getMessage(), "BOOKING_ALREADY_COMPLETED"));
     }
 
     // ── 500 — fallback (KHÔNG lộ stacktrace) ─────────────────────────────────

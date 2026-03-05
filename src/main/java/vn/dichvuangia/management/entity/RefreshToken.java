@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @Entity
-@Table(name = "refresh_tokens")
+@Table(name = "refresh_tokens") // Bảng token làm mới
 public class RefreshToken {
 
     @Id

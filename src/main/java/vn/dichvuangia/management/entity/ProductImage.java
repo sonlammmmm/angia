@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @Entity
-@Table(name = "product_images")
+@Table(name = "product_images") // Bảng hình ảnh sản phẩm
 public class ProductImage {
 
     @Id

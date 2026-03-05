@@ -3,7 +3,7 @@ package vn.dichvuangia.management.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import vn.dichvuangia.management.common.ProductType;
+import vn.dichvuangia.management.common.enums.ProductType;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -13,7 +13,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @Entity
-@Table(name = "products")
+@Table(name = "products") // Bảng sản phẩm
 public class Product {
 
     @Id
@@ -64,11 +64,11 @@ public class Product {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @OneToMany(mappedBy = "product", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ProductImage> images = new ArrayList<>();
+    @Column(name = "specs_json", columnDefinition = "json")
+    private String specsJson;
 
     @OneToMany(mappedBy = "product", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ProductSpecValue> specValues = new ArrayList<>();
+    private List<ProductImage> images = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
