@@ -1,5 +1,6 @@
 package vn.dichvuangia.management.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -8,10 +9,12 @@ import lombok.Getter;
 public class AuthResponse {
 
     private String accessToken;
-
-    // refreshToken được set vào HttpOnly Cookie, không trả trong body
     private String tokenType;
 
-    private UserResponse user;
-}
+    // seconds — client dùng để biết token hết hạn khi nào
+    private long expiresIn;
 
+    // @JsonIgnore — không trả ra body JSON, chỉ dùng nội bộ để Controller set Cookie
+    @JsonIgnore
+    private String refreshToken;
+}

@@ -46,5 +46,6 @@ public class ProductCreateRequest {
 
     // Thông số kỹ thuật dạng key-value: {"flow_rate":"75GPD","origin":"Korea"}
     // Sẽ được serialize sang JSON string khi lưu vào DB
-    private Map<String, Object> specs;
+    // Tên field khớp với API spec: specsJson
+    private Map<String, Object> specsJson;
 }

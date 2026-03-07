@@ -27,7 +27,8 @@ public class ProductResponse {
     private Integer lifespanMonths;
 
     // specs_json deserialize sang Map để frontend dùng dễ hơn
-    private Map<String, Object> specs;
+    // Tên field khớp với API spec: specsJson
+    private Map<String, Object> specsJson;
 
     private List<ProductImageResponse> images;
     private LocalDateTime createdAt;

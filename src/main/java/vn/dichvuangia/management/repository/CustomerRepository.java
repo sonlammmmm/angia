@@ -9,9 +9,14 @@ import java.util.Optional;
 
 public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
-    Page<Customer> findAllByCreatedById(Long userId, Pageable pageable);
+    // SALE scope: chỉ xem khách do mình tạo (created_by = currentUserId)
+    Page<Customer> findAllByCreatedBy_Id(Long userId, Pageable pageable);
 
     Optional<Customer> findByPhone(String phone);
 
     boolean existsByPhone(String phone);
+
+    // Tìm Customer profile theo User ID (cho khách hàng tự đăng ký — createdBy = chính mình)
+    Optional<Customer> findByCreatedBy_Id(Long userId);
 }
+

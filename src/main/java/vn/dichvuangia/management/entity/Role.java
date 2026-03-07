@@ -19,7 +19,7 @@ public class Role {
     private Long id;
 
     @Column(name = "name", nullable = false, unique = true, length = 50)
-    private String name;  // 'ADMIN', 'SALE', 'MANAGEMENT', 'TECHNICIAN'
+    private String name;  // 'ADMIN', 'SALE', 'MANAGEMENT', 'TECHNICIAN', 'CUSTOMER'
 
     @Column(name = "description")
     private String description;

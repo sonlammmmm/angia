@@ -58,4 +58,6 @@ public interface MaintenanceBookingRepository extends JpaRepository<MaintenanceB
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to,
             Pageable pageable);
+
+    boolean existsByBookingCode(String bookingCode);
 }

@@ -4,7 +4,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.InternalAuthenticationServiceException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -59,6 +62,28 @@ public class GlobalExceptionHandler {
                         .build());
     }
 
+    // ── 401 — Authentication failures ─────────────────────────────────────────
+
+    @ExceptionHandler({BadCredentialsException.class, UsernameNotFoundException.class})
+    public ResponseEntity<ApiResponse<Void>> handleBadCredentials(Exception ex) {
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error("Tên đăng nhập hoặc mật khẩu không đúng", "INVALID_CREDENTIALS"));
+    }
+
+    @ExceptionHandler(InternalAuthenticationServiceException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAuthService(InternalAuthenticationServiceException ex) {
+        // Unwrap: nếu cause là DisabledException → 403, else → 401
+        if (ex.getCause() instanceof DisabledException) {
+            return ResponseEntity
+                    .status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Tài khoản đã bị khóa", "ACCOUNT_DISABLED"));
+        }
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error("Xác thực thất bại", "AUTHENTICATION_FAILED"));
+    }
+
     // ── 403 ───────────────────────────────────────────────────────────────────
 
     @ExceptionHandler(DisabledException.class)
@@ -88,9 +113,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneral(Exception ex) {
-        log.error("Unhandled exception: {}", ex.getMessage(), ex);
+        log.error("Unhandled exception [{}]: {}", ex.getClass().getName(), ex.getMessage(), ex);
+        // TODO: remove debug info before production
+        String debugMsg = ex.getClass().getSimpleName() + ": " + ex.getMessage()
+                + (ex.getCause() != null ? " | cause: " + ex.getCause().getClass().getSimpleName() + ": " + ex.getCause().getMessage() : "");
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("Lỗi hệ thống, vui lòng thử lại sau", "INTERNAL_ERROR"));
+                .body(ApiResponse.error(debugMsg, "INTERNAL_ERROR"));
     }
 }
