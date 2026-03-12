@@ -23,6 +23,7 @@ import vn.dichvuangia.management.repository.MaintenanceBookingRepository;
 import vn.dichvuangia.management.repository.ServiceRepository;
 import vn.dichvuangia.management.repository.UserRepository;
 
+import org.springframework.security.access.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Random;
@@ -124,7 +125,7 @@ public class MaintenanceBookingService {
 
         Long currentUserId = getCurrentUserId();
         if (booking.getTechnician() == null || !booking.getTechnician().getId().equals(currentUserId)) {
-            throw new SecurityException("Chỉ kỹ thuật viên được gán mới có thể hoàn thành lịch này");
+            throw new AccessDeniedException("Chỉ kỹ thuật viên được gán mới có thể hoàn thành lịch này");
         }
 
         if (request.getNotes() != null && !request.getNotes().isBlank()) {

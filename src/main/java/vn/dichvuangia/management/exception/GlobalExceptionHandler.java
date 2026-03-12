@@ -100,6 +100,15 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Bạn không có quyền thực hiện thao tác này", "ACCESS_DENIED"));
     }
 
+    // ── 400 — IllegalArgumentException (duplicate username/phone, etc.) ─────────
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage(), "BAD_REQUEST"));
+    }
+
     // ── 409 ───────────────────────────────────────────────────────────────────
 
     @ExceptionHandler(BookingAlreadyCompletedException.class)
@@ -109,16 +118,13 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage(), "BOOKING_ALREADY_COMPLETED"));
     }
 
-    // ── 500 — fallback (KHÔNG lộ stacktrace) ─────────────────────────────────
+    // ── 500 — fallback (không lộ thông tin nội bộ) ────────────────────────────
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneral(Exception ex) {
         log.error("Unhandled exception [{}]: {}", ex.getClass().getName(), ex.getMessage(), ex);
-        // TODO: remove debug info before production
-        String debugMsg = ex.getClass().getSimpleName() + ": " + ex.getMessage()
-                + (ex.getCause() != null ? " | cause: " + ex.getCause().getClass().getSimpleName() + ": " + ex.getCause().getMessage() : "");
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(debugMsg, "INTERNAL_ERROR"));
+                .body(ApiResponse.error("Đã xảy ra lỗi hệ thống, vui lòng thử lại sau", "INTERNAL_ERROR"));
     }
 }
