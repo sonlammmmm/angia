@@ -23,6 +23,8 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfigurationSource;
 
@@ -75,6 +77,20 @@ public class SecurityConfig {
         return new ProviderManager(provider);
     }
 
+    // ── JWT Authority Converter ──────────────────────────────────────────────
+    // Mặc định Spring thêm prefix "SCOPE_" khi đọc claim "scope".
+    // Vì JWT đã chứa "ROLE_ADMIN", ta bỏ prefix để hasRole("ADMIN") match đúng.
+
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+        var grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
+        grantedAuthoritiesConverter.setAuthorityPrefix(""); // bỏ prefix "SCOPE_"
+
+        var jwtConverter = new JwtAuthenticationConverter();
+        jwtConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
+        return jwtConverter;
+    }
+
     // ── Security Filter Chain ──────────────────────────────────────────────────
 
     @Bean
@@ -88,6 +104,7 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/products/**", "/brands/**", "/services/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/files/**").permitAll()
 
                         // Admin only
                         .requestMatchers("/users/**").hasRole("ADMIN")
@@ -119,7 +136,10 @@ public class SecurityConfig {
                         // Tạo đơn hàng & đặt lịch bảo trì: mọi user đã xác thực (bao gồm CUSTOMER)
                         .anyRequest().authenticated()
                 )
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.decoder(jwtDecoder())))
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt
+                        .decoder(jwtDecoder())
+                        .jwtAuthenticationConverter(jwtAuthenticationConverter())
+                ))
                 .build();
     }
 }

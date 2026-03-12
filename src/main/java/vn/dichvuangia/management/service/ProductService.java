@@ -15,8 +15,10 @@ import vn.dichvuangia.management.dto.response.ProductImageResponse;
 import vn.dichvuangia.management.dto.response.ProductResponse;
 import vn.dichvuangia.management.entity.Brand;
 import vn.dichvuangia.management.entity.Product;
+import vn.dichvuangia.management.entity.ProductImage;
 import vn.dichvuangia.management.exception.ResourceNotFoundException;
 import vn.dichvuangia.management.repository.BrandRepository;
+import vn.dichvuangia.management.repository.ProductImageRepository;
 import vn.dichvuangia.management.repository.ProductRepository;
 
 import java.util.Collections;
@@ -30,6 +32,7 @@ import java.util.Map;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final ProductImageRepository productImageRepository;
     private final BrandRepository brandRepository;
     private final ObjectMapper objectMapper;
 
@@ -66,7 +69,14 @@ public class ProductService {
         product.setIsDeleted(false);
         product.setSpecsJson(serializeSpecs(request.getSpecsJson()));
 
-        return toResponse(productRepository.save(product));
+        Product saved = productRepository.save(product);
+
+        // Lưu ảnh sản phẩm nếu có
+        if (request.getImageUrls() != null && !request.getImageUrls().isEmpty()) {
+            saveProductImages(saved, request.getImageUrls());
+        }
+
+        return toResponse(saved);
     }
 
     @Transactional
@@ -101,6 +111,15 @@ public class ProductService {
             product.setSpecsJson(serializeSpecs(request.getSpecsJson()));
         }
 
+        // Cập nhật ảnh: xóa ảnh cũ, thêm ảnh mới
+        if (request.getImageUrls() != null) {
+            productImageRepository.deleteAll(product.getImages());
+            product.getImages().clear();
+            if (!request.getImageUrls().isEmpty()) {
+                saveProductImages(product, request.getImageUrls());
+            }
+        }
+
         return toResponse(productRepository.save(product));
     }
 
@@ -112,6 +131,20 @@ public class ProductService {
     }
 
     // ─── helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Lưu danh sách URL ảnh cho sản phẩm. Phần tử đầu tiên = ảnh chính (isMain=true).
+     */
+    private void saveProductImages(Product product, List<String> imageUrls) {
+        for (int i = 0; i < imageUrls.size(); i++) {
+            ProductImage img = new ProductImage();
+            img.setProduct(product);
+            img.setImageUrl(imageUrls.get(i));
+            img.setIsMain(i == 0);
+            productImageRepository.save(img);
+            product.getImages().add(img);
+        }
+    }
 
     private Product findActiveProduct(Long id) {
         return productRepository.findByIdAndIsDeletedFalse(id)

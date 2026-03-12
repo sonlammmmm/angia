@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 
 @Getter
@@ -28,4 +29,8 @@ public class ProductUpdateRequest {
 
     // null = giữ nguyên specs hiện tại
     private Map<String, Object> specsJson;
+
+    // null = giữ nguyên ảnh hiện tại
+    // Danh sách URL ảnh mới (phần tử đầu = isMain = true)
+    private List<String> imageUrls;
 }

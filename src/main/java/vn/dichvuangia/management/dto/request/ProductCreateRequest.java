@@ -9,6 +9,7 @@ import lombok.Setter;
 import vn.dichvuangia.management.common.enums.ProductType;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 
 @Getter
@@ -48,4 +49,8 @@ public class ProductCreateRequest {
     // Sẽ được serialize sang JSON string khi lưu vào DB
     // Tên field khớp với API spec: specsJson
     private Map<String, Object> specsJson;
+
+    // Danh sách URL ảnh sản phẩm (upload trước, gửi URL sau)
+    // Phần tử đầu tiên sẽ là ảnh chính (isMain = true)
+    private List<String> imageUrls;
 }
