@@ -10,6 +10,8 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import vn.dichvuangia.management.common.ApiResponse;
 import vn.dichvuangia.management.service.FileStorageService;
 
+import java.util.Objects;
+
 @Tag(name = "File Upload", description = "Upload ảnh cho sản phẩm, thương hiệu, dịch vụ")
 @RestController
 @RequestMapping("/files")
@@ -28,7 +30,7 @@ public class FileUploadController {
         // Build URL trả về client: /api/v1/files/{filename}
         String fileUrl = ServletUriComponentsBuilder.fromCurrentContextPath()
                 .path("/files/")
-                .path(filename)
+                .path(Objects.requireNonNull(filename))
                 .toUriString();
 
         return ResponseEntity.ok(ApiResponse.success("Upload thành công", fileUrl));

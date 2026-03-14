@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,10 +13,12 @@ import vn.dichvuangia.management.dto.request.CustomerUpdateRequest;
 import vn.dichvuangia.management.dto.response.BookingResponse;
 import vn.dichvuangia.management.dto.response.CustomerResponse;
 import vn.dichvuangia.management.entity.Customer;
+import vn.dichvuangia.management.entity.Role;
 import vn.dichvuangia.management.entity.User;
 import vn.dichvuangia.management.exception.ResourceNotFoundException;
 import vn.dichvuangia.management.repository.CustomerRepository;
 import vn.dichvuangia.management.repository.MaintenanceBookingRepository;
+import vn.dichvuangia.management.repository.RoleRepository;
 import vn.dichvuangia.management.repository.UserRepository;
 
 @Service
@@ -26,6 +29,8 @@ public class CustomerService {
     private final CustomerRepository customerRepository;
     private final UserRepository userRepository;
     private final MaintenanceBookingRepository bookingRepository;
+    private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
 
     /**
      * ADMIN / MANAGEMENT → thấy tất cả khách hàng.
@@ -59,11 +64,38 @@ public class CustomerService {
         User createdBy = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", currentUserId));
 
+        // Nếu có username/password → tạo tài khoản User cho khách hàng
+        User customerUser = null;
+        if (request.getUsername() != null && !request.getUsername().isBlank()
+                && request.getPassword() != null && !request.getPassword().isBlank()) {
+
+            // Validate confirm password
+            if (request.getConfirmPassword() == null
+                    || !request.getPassword().equals(request.getConfirmPassword())) {
+                throw new IllegalArgumentException("Mật khẩu và xác nhận mật khẩu không khớp");
+            }
+
+            if (userRepository.existsByUsername(request.getUsername())) {
+                throw new IllegalArgumentException("Tên đăng nhập '" + request.getUsername() + "' đã tồn tại");
+            }
+
+            Role customerRole = roleRepository.findByName("CUSTOMER")
+                    .orElseThrow(() -> new ResourceNotFoundException("Role CUSTOMER chưa được khởi tạo"));
+
+            customerUser = new User();
+            customerUser.setUsername(request.getUsername());
+            customerUser.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+            customerUser.setRole(customerRole);
+            customerUser.setIsActive(true);
+            customerUser = userRepository.save(customerUser);
+        }
+
         Customer customer = new Customer();
         customer.setFullName(request.getFullName());
         customer.setPhone(request.getPhone());
         customer.setAddress(request.getAddress());
-        customer.setCreatedBy(createdBy);
+        // createdBy = tài khoản khách hàng nếu có, ngược lại = nhân viên tạo
+        customer.setCreatedBy(customerUser != null ? customerUser : createdBy);
 
         return toResponse(customerRepository.save(customer));
     }

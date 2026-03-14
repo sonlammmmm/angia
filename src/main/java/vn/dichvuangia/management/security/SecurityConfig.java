@@ -101,10 +101,14 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // Public
-                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/auth/register", "/auth/login", "/auth/refresh", "/auth/logout").permitAll()
+                        .requestMatchers("/auth/change-password").authenticated()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/products/**", "/brands/**", "/services/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/files/**").permitAll()
+
+                        // Guest checkout (khách vãng lai — không cần đăng nhập)
+                        .requestMatchers("/guest/**").permitAll()
 
                         // Admin only
                         .requestMatchers("/users/**").hasRole("ADMIN")

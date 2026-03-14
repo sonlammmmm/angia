@@ -5,9 +5,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.dichvuangia.management.dto.request.ChangePasswordRequest;
 import vn.dichvuangia.management.dto.request.LoginRequest;
 import vn.dichvuangia.management.dto.request.RegisterRequest;
 import vn.dichvuangia.management.dto.response.AuthResponse;
@@ -24,6 +27,7 @@ import vn.dichvuangia.management.repository.UserRepository;
 import vn.dichvuangia.management.security.JwtService;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -157,6 +161,37 @@ public class AuthService {
     public void logout(String rawToken) {
         refreshTokenRepository.findByToken(rawToken)
                 .ifPresent(refreshTokenRepository::delete);
+    }
+
+    /**
+     * Đổi mật khẩu — xác nhận mật khẩu hiện tại, cập nhật mật khẩu mới.
+     */
+    @Transactional
+    public void changePassword(ChangePasswordRequest request) {
+        // Validate mật khẩu mới khớp xác nhận
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new IllegalArgumentException("Mật khẩu mới và xác nhận mật khẩu không khớp");
+        }
+
+        // Lấy userId từ JWT
+        Jwt jwt = (Jwt) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long userId = Objects.requireNonNull(jwt.getClaim("userId"), "userId claim is missing from JWT");
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+
+        // Kiểm tra mật khẩu hiện tại
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("Mật khẩu hiện tại không đúng");
+        }
+
+        // Kiểm tra mật khẩu mới khác mật khẩu cũ
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("Mật khẩu mới phải khác mật khẩu hiện tại");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 
     // ─── helpers ───────────────────────────────────────────────────────────────

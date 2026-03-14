@@ -10,6 +10,7 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import vn.dichvuangia.management.common.ApiResponse;
+import vn.dichvuangia.management.dto.request.ChangePasswordRequest;
 import vn.dichvuangia.management.dto.request.LoginRequest;
 import vn.dichvuangia.management.dto.request.RegisterRequest;
 import vn.dichvuangia.management.dto.response.AuthResponse;
@@ -113,6 +114,20 @@ public class AuthController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
                 .body(ApiResponse.success("Đăng xuất thành công", null));
+    }
+
+    // ── PUT /auth/change-password ──────────────────────────────────────────────
+
+    @Operation(summary = "Đổi mật khẩu — yêu cầu xác thực")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Đổi mật khẩu thành công"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Mật khẩu không hợp lệ")
+    })
+    @PutMapping("/change-password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(request);
+        return ResponseEntity.ok(ApiResponse.success("Đổi mật khẩu thành công", null));
     }
 
     // ─── helper ────────────────────────────────────────────────────────────────

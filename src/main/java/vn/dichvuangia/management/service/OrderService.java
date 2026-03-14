@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.dichvuangia.management.common.enums.OrderStatus;
 import vn.dichvuangia.management.dto.request.OrderCreateRequest;
 import vn.dichvuangia.management.dto.request.OrderStatusUpdateRequest;
+import vn.dichvuangia.management.dto.request.GuestOrderCreateRequest;
 import vn.dichvuangia.management.dto.response.OrderItemResponse;
 import vn.dichvuangia.management.dto.response.OrderResponse;
 import vn.dichvuangia.management.entity.Customer;
@@ -126,6 +127,54 @@ public class OrderService {
     }
 
     /**
+     * Khách vãng lai đặt hàng — không cần đăng nhập.
+     * Tìm Customer theo số điện thoại, nếu chưa có thì tạo mới.
+     * sale = null (đơn online — không có nhân viên chốt).
+     */
+    @Transactional
+    public OrderResponse createGuest(GuestOrderCreateRequest request) {
+        Customer customer = findOrCreateGuestCustomer(
+                request.getFullName(), request.getPhone(), request.getShippingAddress());
+
+        // Validate stock trước
+        List<Product> products = request.getItems().stream()
+                .map(item -> {
+                    Product p = productRepository.findByIdAndIsDeletedFalse(item.getProductId())
+                            .orElseThrow(() -> new ResourceNotFoundException("Product", item.getProductId()));
+                    if (p.getStockQuantity() < item.getQuantity()) {
+                        throw new InsufficientStockException(p.getName(), p.getStockQuantity());
+                    }
+                    return p;
+                })
+                .toList();
+
+        Order order = new Order();
+        order.setOrderCode(generateOrderCode());
+        order.setCustomer(customer);
+        order.setSale(null); // đơn online — không có nhân viên chốt
+        order.setShippingAddress(request.getShippingAddress());
+        order.setStatus(OrderStatus.PENDING);
+
+        BigDecimal total = BigDecimal.ZERO;
+        for (int i = 0; i < request.getItems().size(); i++) {
+            var itemReq = request.getItems().get(i);
+            Product product = products.get(i);
+
+            OrderItem item = new OrderItem();
+            item.setOrder(order);
+            item.setProduct(product);
+            item.setQuantity(itemReq.getQuantity());
+            item.setUnitPrice(product.getPrice());
+            order.getItems().add(item);
+
+            total = total.add(product.getPrice().multiply(BigDecimal.valueOf(itemReq.getQuantity())));
+        }
+
+        order.setTotalAmount(total);
+        return toResponse(orderRepository.save(order));
+    }
+
+    /**
      * Cập nhật trạng thái đơn hàng theo state machine:
      * - PENDING → PROCESSING | CANCELLED
      * - PROCESSING → COMPLETED (trừ stock) | CANCELLED (hoàn stock nếu cần)
@@ -200,6 +249,20 @@ public class OrderService {
     private Order findOrderById(Long id) {
         return orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order", id));
+    }
+
+    /**
+     * Tìm Customer theo số điện thoại, nếu chưa có thì tạo mới (khách vãng lai).
+     */
+    private Customer findOrCreateGuestCustomer(String fullName, String phone, String address) {
+        return customerRepository.findByPhone(phone)
+                .orElseGet(() -> {
+                    Customer c = new Customer();
+                    c.setFullName(fullName);
+                    c.setPhone(phone);
+                    c.setAddress(address);
+                    return customerRepository.save(c);
+                });
     }
 
     private Long getCurrentUserId() {

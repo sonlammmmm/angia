@@ -11,6 +11,7 @@ import vn.dichvuangia.management.common.enums.BookingStatus;
 import vn.dichvuangia.management.dto.request.BookingAssignRequest;
 import vn.dichvuangia.management.dto.request.BookingCompleteRequest;
 import vn.dichvuangia.management.dto.request.BookingCreateRequest;
+import vn.dichvuangia.management.dto.request.GuestBookingCreateRequest;
 import vn.dichvuangia.management.dto.response.BookingResponse;
 import vn.dichvuangia.management.entity.Customer;
 import vn.dichvuangia.management.entity.MaintenanceBooking;
@@ -71,6 +72,30 @@ public class MaintenanceBookingService {
     public BookingResponse create(BookingCreateRequest request) {
         Customer customer = customerRepository.findById(request.getCustomerId())
                 .orElseThrow(() -> new ResourceNotFoundException("Customer", request.getCustomerId()));
+
+        vn.dichvuangia.management.entity.Service service = serviceRepository
+                .findByIdAndIsDeletedFalse(request.getServiceId())
+                .orElseThrow(() -> new ResourceNotFoundException("Service", request.getServiceId()));
+
+        MaintenanceBooking booking = new MaintenanceBooking();
+        booking.setBookingCode(generateBookingCode());
+        booking.setCustomer(customer);
+        booking.setService(service);
+        booking.setBookingDate(request.getBookingDate());
+        booking.setNotes(request.getNotes());
+        booking.setStatus(BookingStatus.PENDING);
+
+        return toResponse(bookingRepository.save(booking));
+    }
+
+    /**
+     * Khách vãng lai đặt lịch — không cần đăng nhập.
+     * Tìm Customer theo số điện thoại, nếu chưa có thì tạo mới.
+     */
+    @Transactional
+    public BookingResponse createGuest(GuestBookingCreateRequest request) {
+        Customer customer = findOrCreateGuestCustomer(
+                request.getFullName(), request.getPhone(), request.getAddress());
 
         vn.dichvuangia.management.entity.Service service = serviceRepository
                 .findByIdAndIsDeletedFalse(request.getServiceId())
@@ -160,6 +185,20 @@ public class MaintenanceBookingService {
     private MaintenanceBooking findBookingById(Long id) {
         return bookingRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("MaintenanceBooking", id));
+    }
+
+    /**
+     * Tìm Customer theo số điện thoại, nếu chưa có thì tạo mới (khách vãng lai).
+     */
+    private Customer findOrCreateGuestCustomer(String fullName, String phone, String address) {
+        return customerRepository.findByPhone(phone)
+                .orElseGet(() -> {
+                    Customer c = new Customer();
+                    c.setFullName(fullName);
+                    c.setPhone(phone);
+                    c.setAddress(address);
+                    return customerRepository.save(c);
+                });
     }
 
     private String generateBookingCode() {

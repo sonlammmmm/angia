@@ -14,7 +14,7 @@ public class ServiceUpdateRequest {
     private String name;
     private String description;
 
-    @DecimalMin(value = "0.0", inclusive = false, message = "Giá phải lớn hơn 0")
+    @DecimalMin(value = "0.0", inclusive = true, message = "Giá không được âm")
     private BigDecimal basePrice;
 
     @Min(value = 1, message = "Thời gian thực hiện phải ít nhất 1 phút")
