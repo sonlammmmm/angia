@@ -17,6 +17,7 @@ public class OrderResponse {
     private OrderStatus status;
     private BigDecimal totalAmount;
     private String shippingAddress;
+    private String notes;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

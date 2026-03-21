@@ -109,6 +109,7 @@ public class SecurityConfig {
 
                         // Guest checkout (khách vãng lai — không cần đăng nhập)
                         .requestMatchers("/guest/**").permitAll()
+                        .requestMatchers("/paypal/**").permitAll()
 
                         // Admin only
                         .requestMatchers("/users/**").hasRole("ADMIN")

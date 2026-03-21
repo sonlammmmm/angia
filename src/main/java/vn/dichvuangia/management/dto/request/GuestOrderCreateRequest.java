@@ -27,6 +27,9 @@ public class GuestOrderCreateRequest {
     @NotBlank(message = "Địa chỉ giao hàng không được để trống")
     private String shippingAddress;
 
+    // Ghi chú của khách (không bắt buộc)
+    private String notes;
+
     @NotEmpty(message = "Đơn hàng phải có ít nhất một sản phẩm")
     @Valid
     private List<OrderItemRequest> items;

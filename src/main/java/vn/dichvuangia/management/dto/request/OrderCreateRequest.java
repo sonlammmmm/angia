@@ -22,4 +22,7 @@ public class OrderCreateRequest {
 
     @NotBlank(message = "Địa chỉ giao hàng không được để trống")
     private String shippingAddress;
+
+    // Ghi chú của khách (không bắt buộc)
+    private String notes;
 }

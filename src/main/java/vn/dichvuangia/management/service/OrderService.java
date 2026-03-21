@@ -104,6 +104,7 @@ public class OrderService {
         order.setCustomer(customer);
         order.setSale(sale);
         order.setShippingAddress(request.getShippingAddress());
+    order.setNotes(request.getNotes());
         order.setStatus(OrderStatus.PENDING);
 
         // Tạo order items + tính total
@@ -153,6 +154,7 @@ public class OrderService {
         order.setCustomer(customer);
         order.setSale(null); // đơn online — không có nhân viên chốt
         order.setShippingAddress(request.getShippingAddress());
+    order.setNotes(request.getNotes());
         order.setStatus(OrderStatus.PENDING);
 
         BigDecimal total = BigDecimal.ZERO;
@@ -294,6 +296,7 @@ public class OrderService {
                 .status(order.getStatus())
                 .totalAmount(order.getTotalAmount())
                 .shippingAddress(order.getShippingAddress())
+                .notes(order.getNotes())
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
                 .customerId(order.getCustomer().getId())
