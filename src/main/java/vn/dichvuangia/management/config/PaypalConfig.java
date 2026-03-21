@@ -21,16 +21,20 @@ public class PaypalConfig {
     @Value("${paypal.mode}")
     private String mode;
 
+    private String sanitize(String value) {
+        return value == null ? "" : value.trim();
+    }
+
     @Bean
     public Map<String, String> paypalSdkConfig() {
         Map<String, String> sdkConfig = new HashMap<>();
-        sdkConfig.put("mode", mode);
+        sdkConfig.put("mode", sanitize(mode));
         return sdkConfig;
     }
 
     @Bean
     public APIContext apiContext() throws PayPalRESTException {
-        APIContext apiContext = new APIContext(clientId, clientSecret, mode);
+        APIContext apiContext = new APIContext(sanitize(clientId), sanitize(clientSecret), sanitize(mode));
         apiContext.setConfigurationMap(paypalSdkConfig());
         return apiContext;
     }

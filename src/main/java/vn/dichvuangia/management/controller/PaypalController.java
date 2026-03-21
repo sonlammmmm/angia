@@ -55,6 +55,16 @@ public class PaypalController {
             PaypalExecuteResponse response = paymentService.executePaypalPayment(paymentId, payerId);
             return ResponseEntity.ok(ApiResponse.success("Xác nhận thanh toán thành công", response));
         } catch (PayPalRESTException e) {
+            // PayPal trả về PAYMENT_ALREADY_DONE khi payment đã được capture trước đó
+            // (xảy ra trong race condition hoặc retry) → tra cứu DB và trả về APPROVED
+            if (e.getDetails() != null && "PAYMENT_ALREADY_DONE".equals(e.getDetails().getName())) {
+                try {
+                    PaypalExecuteResponse already = paymentService.getApprovedPaymentByPaypalId(paymentId);
+                    return ResponseEntity.ok(ApiResponse.success("Xác nhận thanh toán thành công", already));
+                } catch (Exception inner) {
+                    // ignore, fall through to error response
+                }
+            }
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponse.error("Xác nhận thanh toán thất bại", "PAYPAL_EXECUTE_FAILED"));
         }

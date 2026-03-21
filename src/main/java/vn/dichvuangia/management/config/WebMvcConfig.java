@@ -18,6 +18,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
     public void addResourceHandlers(@NonNull ResourceHandlerRegistry registry) {
         // Serve /files/** → thư mục uploads/ trên disk
         String absolutePath = Paths.get(uploadDir).toAbsolutePath().normalize().toUri().toString();
+        if (!absolutePath.endsWith("/")) {
+            absolutePath = absolutePath + "/";
+        }
         registry.addResourceHandler("/files/**")
                 .addResourceLocations(absolutePath);
     }

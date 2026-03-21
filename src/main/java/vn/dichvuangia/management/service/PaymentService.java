@@ -58,6 +58,20 @@ public class PaymentService {
     Payment paymentRecord = paymentRepository.findByPaypalPaymentId(paymentId)
         .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy giao dịch PayPal: " + paymentId));
 
+        // ── Idempotency guard ────────────────────────────────────────────────
+        // Nếu giao dịch đã được xử lý thành công (APPROVED) trước đó,
+        // trả về kết quả thành công ngay mà không gọi PayPal lần 2
+        // → tránh lỗi PAYMENT_ALREADY_DONE từ PayPal SDK.
+        if (paymentRecord.getStatus() == PaymentStatus.APPROVED) {
+            return PaypalExecuteResponse.builder()
+                    .status(PaymentStatus.APPROVED)
+                    .referenceType(paymentRecord.getReferenceType())
+                    .referenceId(paymentRecord.getReferenceId())
+                    .referenceCode(paymentRecord.getReferenceCode())
+                    .message("Thanh toán đã được xác nhận trước đó")
+                    .build();
+        }
+
     com.paypal.api.payments.Payment executed = paypalService.executePayment(paymentId, payerId);
 
         if ("approved".equalsIgnoreCase(executed.getState())) {
@@ -223,5 +237,21 @@ public class PaymentService {
         }
         return amountVnd
                 .divide(BigDecimal.valueOf(exchangeRate), 2, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Tra cứu giao dịch đã APPROVED theo paypalPaymentId.
+     * Dùng để fallback khi PayPal trả về PAYMENT_ALREADY_DONE.
+     */
+    public PaypalExecuteResponse getApprovedPaymentByPaypalId(String paypalPaymentId) {
+        Payment paymentRecord = paymentRepository.findByPaypalPaymentId(paypalPaymentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy giao dịch PayPal: " + paypalPaymentId));
+        return PaypalExecuteResponse.builder()
+                .status(paymentRecord.getStatus())
+                .referenceType(paymentRecord.getReferenceType())
+                .referenceId(paymentRecord.getReferenceId())
+                .referenceCode(paymentRecord.getReferenceCode())
+                .message("Thanh toán đã được xác nhận trước đó")
+                .build();
     }
 }
