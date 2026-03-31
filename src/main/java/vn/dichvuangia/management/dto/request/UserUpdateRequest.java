@@ -8,6 +8,8 @@ import lombok.Setter;
 public class UserUpdateRequest {
 
     // Không bắt buộc — chỉ update field nào được gửi lên (null = giữ nguyên)
+    private String fullName;
+
     private String password;
 
     private Long roleId;

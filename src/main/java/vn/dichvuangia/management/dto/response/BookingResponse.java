@@ -3,6 +3,7 @@ package vn.dichvuangia.management.dto.response;
 import lombok.Builder;
 import lombok.Getter;
 import vn.dichvuangia.management.common.enums.BookingStatus;
+import vn.dichvuangia.management.common.enums.PaymentStatus;
 
 import java.time.LocalDateTime;
 
@@ -13,6 +14,7 @@ public class BookingResponse {
     private Long id;
     private String bookingCode;
     private BookingStatus status;
+    private PaymentStatus paymentStatus;
     private LocalDateTime bookingDate;
     private String notes;
     private LocalDateTime createdAt;
@@ -31,4 +33,5 @@ public class BookingResponse {
     // Kỹ thuật viên (nullable — chỉ có sau khi ADMIN gán)
     private Long technicianId;
     private String technicianUsername;
+    private String technicianFullName;
 }

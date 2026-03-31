@@ -7,11 +7,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import vn.dichvuangia.management.common.ApiResponse;
 import vn.dichvuangia.management.common.enums.OrderStatus;
+import vn.dichvuangia.management.common.enums.PaymentStatus;
 import vn.dichvuangia.management.dto.request.OrderCreateRequest;
 import vn.dichvuangia.management.dto.request.OrderStatusUpdateRequest;
 import vn.dichvuangia.management.dto.response.OrderResponse;
@@ -33,7 +35,7 @@ public class OrderController {
     public ResponseEntity<ApiResponse<Page<OrderResponse>>> getAll(
             @RequestParam(required = false) OrderStatus status,
             @RequestParam(required = false) Long customerId,
-            @PageableDefault(size = 10, sort = "createdAt") Pageable pageable) {
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(orderService.getAll(status, customerId, pageable)));
     }
 
@@ -72,5 +74,32 @@ public class OrderController {
             @Valid @RequestBody OrderStatusUpdateRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Cập nhật trạng thái thành công",
                 orderService.updateStatus(id, request)));
+    }
+
+    @Operation(summary = "Cập nhật ghi chú đơn hàng — ADMIN, MANAGEMENT, SALE")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Cập nhật thành công"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Không tìm thấy")
+    })
+    @PatchMapping("/{id}/notes")
+    public ResponseEntity<ApiResponse<OrderResponse>> updateNotes(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, String> body) {
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật ghi chú thành công",
+                orderService.updateNotes(id, body.getOrDefault("notes", ""))));
+    }
+
+    @Operation(summary = "Cập nhật nhanh trạng thái thanh toán — ADMIN, MANAGEMENT")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Cập nhật thành công"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Không tìm thấy")
+    })
+    @PatchMapping("/{id}/payment-status")
+    public ResponseEntity<ApiResponse<OrderResponse>> updatePaymentStatus(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, String> body) {
+        PaymentStatus status = PaymentStatus.valueOf(body.get("paymentStatus"));
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật trạng thái thanh toán thành công",
+                orderService.updatePaymentStatus(id, status)));
     }
 }

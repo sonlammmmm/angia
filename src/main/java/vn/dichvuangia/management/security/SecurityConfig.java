@@ -114,8 +114,8 @@ public class SecurityConfig {
                         .requestMatchers("/guest/**").permitAll()
                         .requestMatchers("/paypal/**").permitAll()
 
-                        // Admin only
-                        .requestMatchers("/users/**").hasRole("ADMIN")
+                        // Admin + Management: quản lý tài khoản nhân viên
+                        .requestMatchers("/users/**").hasAnyRole("ADMIN", "MANAGEMENT")
                         .requestMatchers(HttpMethod.DELETE, "/**").hasRole("ADMIN")
 
                         // Admin + Management: quản lý sản phẩm, thương hiệu, dịch vụ

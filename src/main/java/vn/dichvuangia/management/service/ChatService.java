@@ -12,9 +12,11 @@ import vn.dichvuangia.management.dto.response.ChatMessageResponse;
 import vn.dichvuangia.management.dto.response.ConversationResponse;
 import vn.dichvuangia.management.entity.ChatMessage;
 import vn.dichvuangia.management.entity.Conversation;
+import vn.dichvuangia.management.entity.Customer;
 import vn.dichvuangia.management.entity.User;
 import vn.dichvuangia.management.repository.ChatMessageRepository;
 import vn.dichvuangia.management.repository.ConversationRepository;
+import vn.dichvuangia.management.repository.CustomerRepository;
 import vn.dichvuangia.management.repository.UserRepository;
 
 import java.time.LocalDateTime;
@@ -38,6 +40,7 @@ public class ChatService {
     private final ConversationRepository conversationRepo;
     private final ChatMessageRepository messageRepo;
     private final UserRepository userRepo;
+    private final CustomerRepository customerRepo;
     private final SimpMessagingTemplate messagingTemplate;
 
     /** Danh sách admin online (userId → username), thread-safe */
@@ -423,10 +426,18 @@ public class ChatService {
     // ── Mappers ───────────────────────────────────────────────────────────
 
     private ConversationResponse toConversationResponse(Conversation c) {
+        // Lấy fullName từ bảng Customer nếu có
+        String customerFullName = customerRepo.findByCreatedBy_Id(c.getCustomer().getId())
+                .map(Customer::getFullName)
+                .orElse(null);
+        String displayName = (customerFullName != null && !customerFullName.isBlank())
+                ? customerFullName : c.getCustomer().getUsername();
+
         return ConversationResponse.builder()
                 .id(c.getId())
                 .customerId(c.getCustomer().getId())
-                .customerName(c.getCustomer().getUsername())
+                .customerName(displayName)
+                .customerUsername(c.getCustomer().getUsername())
                 .assignedAdminId(c.getAssignedAdmin() != null ? c.getAssignedAdmin().getId() : null)
                 .assignedAdminName(c.getAssignedAdmin() != null ? c.getAssignedAdmin().getUsername() : null)
                 .status(c.getStatus().name())
@@ -439,11 +450,25 @@ public class ChatService {
     }
 
     private ChatMessageResponse toMessageResponse(ChatMessage m) {
+        String displayName = "Hệ thống";
+        if (m.getSender() != null) {
+            // Lấy fullName từ bảng Customer nếu là CUSTOMER
+            String role = m.getSender().getRole().getName();
+            if ("CUSTOMER".equals(role)) {
+                displayName = customerRepo.findByCreatedBy_Id(m.getSender().getId())
+                        .map(Customer::getFullName)
+                        .orElse(m.getSender().getUsername());
+            } else {
+                displayName = m.getSender().getUsername();
+            }
+        }
+
         return ChatMessageResponse.builder()
                 .id(m.getId())
                 .conversationId(m.getConversation().getId())
                 .senderId(m.getSender() != null ? m.getSender().getId() : null)
                 .senderName(m.getSender() != null ? m.getSender().getUsername() : "Hệ thống")
+                .senderDisplayName(displayName)
                 .senderRole(m.getSender() != null ? m.getSender().getRole().getName() : "SYSTEM")
                 .content(m.getContent())
                 .type(m.getType().name())

@@ -14,7 +14,8 @@ public class ChatMessageResponse {
     private Long id;
     private Long conversationId;
     private Long senderId;
-    private String senderName;
+    private String senderName;         // username đăng nhập
+    private String senderDisplayName;  // tên hiển thị (fullName nếu có, fallback username)
     private String senderRole;
     private String content;
     private String type;

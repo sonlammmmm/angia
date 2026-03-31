@@ -8,6 +8,9 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.dichvuangia.management.common.enums.OrderStatus;
+import vn.dichvuangia.management.common.enums.PaymentMethod;
+import vn.dichvuangia.management.common.enums.PaymentReferenceType;
+import vn.dichvuangia.management.common.enums.PaymentStatus;
 import vn.dichvuangia.management.dto.request.OrderCreateRequest;
 import vn.dichvuangia.management.dto.request.OrderStatusUpdateRequest;
 import vn.dichvuangia.management.dto.request.GuestOrderCreateRequest;
@@ -16,6 +19,7 @@ import vn.dichvuangia.management.dto.response.OrderResponse;
 import vn.dichvuangia.management.entity.Customer;
 import vn.dichvuangia.management.entity.Order;
 import vn.dichvuangia.management.entity.OrderItem;
+import vn.dichvuangia.management.entity.Payment;
 import vn.dichvuangia.management.entity.Product;
 import vn.dichvuangia.management.entity.User;
 import vn.dichvuangia.management.exception.InsufficientStockException;
@@ -23,6 +27,7 @@ import vn.dichvuangia.management.exception.InvalidStatusTransitionException;
 import vn.dichvuangia.management.exception.ResourceNotFoundException;
 import vn.dichvuangia.management.repository.CustomerRepository;
 import vn.dichvuangia.management.repository.OrderRepository;
+import vn.dichvuangia.management.repository.PaymentRepository;
 import vn.dichvuangia.management.repository.ProductRepository;
 import vn.dichvuangia.management.repository.UserRepository;
 
@@ -49,6 +54,7 @@ public class OrderService {
     private final CustomerRepository customerRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final PaymentRepository paymentRepository;
 
     @Transactional(readOnly = true)
     public Page<OrderResponse> getAll(OrderStatus status, Long customerId, Pageable pageable) {
@@ -58,17 +64,17 @@ public class OrderService {
         if ("ROLE_SALE".equals(scope)) {
             Long currentUserId = getCurrentUserId();
             return orderRepository.findAllWithFilter(status, currentUserId, customerId, pageable)
-                    .map(OrderService::toResponse);
+                    .map(this::toResponseWithPayment);
         }
 
         // ADMIN / MANAGEMENT: thấy tất cả
         return orderRepository.findAllWithFilter(status, null, customerId, pageable)
-                .map(OrderService::toResponse);
+                .map(this::toResponseWithPayment);
     }
 
     @Transactional(readOnly = true)
     public OrderResponse getById(Long id) {
-        return toResponse(findOrderById(id));
+        return toResponseWithPayment(findOrderById(id));
     }
 
     /**
@@ -124,7 +130,9 @@ public class OrderService {
         }
 
         order.setTotalAmount(total);
-        return toResponse(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+        createFreePaymentIfNeeded(saved);
+        return toResponseWithPayment(saved);
     }
 
     /**
@@ -173,7 +181,9 @@ public class OrderService {
         }
 
         order.setTotalAmount(total);
-        return toResponse(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+        createFreePaymentIfNeeded(saved);
+        return toResponseWithPayment(saved);
     }
 
     /**
@@ -213,7 +223,17 @@ public class OrderService {
         }
 
         order.setStatus(next);
-        return toResponse(orderRepository.save(order));
+        return toResponseWithPayment(orderRepository.save(order));
+    }
+
+    /**
+     * Cập nhật ghi chú đơn hàng.
+     */
+    @Transactional
+    public OrderResponse updateNotes(Long id, String notes) {
+        Order order = findOrderById(id);
+        order.setNotes(notes);
+        return toResponseWithPayment(orderRepository.save(order));
     }
 
     // ─── helpers ───────────────────────────────────────────────────────────────
@@ -278,6 +298,10 @@ public class OrderService {
     }
 
     static OrderResponse toResponse(Order order) {
+        return toResponse(order, null);
+    }
+
+    static OrderResponse toResponse(Order order, PaymentStatus paymentStatus) {
         List<OrderItemResponse> items = order.getItems().stream()
                 .map(item -> OrderItemResponse.builder()
                         .id(item.getId())
@@ -294,6 +318,7 @@ public class OrderService {
                 .id(order.getId())
                 .orderCode(order.getOrderCode())
                 .status(order.getStatus())
+                .paymentStatus(paymentStatus)
                 .totalAmount(order.getTotalAmount())
                 .shippingAddress(order.getShippingAddress())
                 .notes(order.getNotes())
@@ -306,5 +331,56 @@ public class OrderService {
                 .saleUsername(order.getSale() != null ? order.getSale().getUsername() : null)
                 .items(items)
                 .build();
+    }
+
+    private OrderResponse toResponseWithPayment(Order order) {
+        PaymentStatus ps = paymentRepository
+                .findTopByReferenceTypeAndReferenceIdOrderByCreatedAtDesc(PaymentReferenceType.ORDER, order.getId())
+                .map(Payment::getStatus)
+                .orElse(null);
+        return toResponse(order, ps);
+    }
+
+    /**
+     * Cập nhật trạng thái thanh toán nhanh cho đơn hàng.
+     * Nếu chưa có Payment record, tạo mới. Nếu đã có, cập nhật status.
+     */
+    @Transactional
+    public OrderResponse updatePaymentStatus(Long id, PaymentStatus newStatus) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order", id));
+
+        Payment payment = paymentRepository
+                .findTopByReferenceTypeAndReferenceIdOrderByCreatedAtDesc(PaymentReferenceType.ORDER, id)
+                .orElseGet(() -> {
+                    Payment p = new Payment();
+                    p.setReferenceType(PaymentReferenceType.ORDER);
+                    p.setReferenceId(order.getId());
+                    p.setReferenceCode(order.getOrderCode());
+                    p.setAmountVnd(order.getTotalAmount());
+                    p.setCurrency("VND");
+                    p.setMethod(PaymentMethod.FREE);
+                    return p;
+                });
+
+        payment.setStatus(newStatus);
+        paymentRepository.save(payment);
+
+        return toResponse(order, newStatus);
+    }
+
+    private void createFreePaymentIfNeeded(Order order) {
+        if (order.getTotalAmount().compareTo(BigDecimal.ZERO) == 0) {
+            Payment payment = new Payment();
+            payment.setReferenceType(PaymentReferenceType.ORDER);
+            payment.setReferenceId(order.getId());
+            payment.setReferenceCode(order.getOrderCode());
+            payment.setAmountVnd(BigDecimal.ZERO);
+            payment.setAmountUsd(BigDecimal.ZERO);
+            payment.setCurrency("VND");
+            payment.setMethod(PaymentMethod.FREE);
+            payment.setStatus(PaymentStatus.FREE);
+            paymentRepository.save(payment);
+        }
     }
 }

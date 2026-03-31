@@ -8,6 +8,9 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.dichvuangia.management.common.enums.BookingStatus;
+import vn.dichvuangia.management.common.enums.PaymentMethod;
+import vn.dichvuangia.management.common.enums.PaymentReferenceType;
+import vn.dichvuangia.management.common.enums.PaymentStatus;
 import vn.dichvuangia.management.dto.request.BookingAssignRequest;
 import vn.dichvuangia.management.dto.request.BookingCompleteRequest;
 import vn.dichvuangia.management.dto.request.BookingCreateRequest;
@@ -15,12 +18,14 @@ import vn.dichvuangia.management.dto.request.GuestBookingCreateRequest;
 import vn.dichvuangia.management.dto.response.BookingResponse;
 import vn.dichvuangia.management.entity.Customer;
 import vn.dichvuangia.management.entity.MaintenanceBooking;
+import vn.dichvuangia.management.entity.Payment;
 import vn.dichvuangia.management.entity.User;
 import vn.dichvuangia.management.exception.BookingAlreadyCompletedException;
 import vn.dichvuangia.management.exception.InvalidStatusTransitionException;
 import vn.dichvuangia.management.exception.ResourceNotFoundException;
 import vn.dichvuangia.management.repository.CustomerRepository;
 import vn.dichvuangia.management.repository.MaintenanceBookingRepository;
+import vn.dichvuangia.management.repository.PaymentRepository;
 import vn.dichvuangia.management.repository.ServiceRepository;
 import vn.dichvuangia.management.repository.UserRepository;
 
@@ -41,6 +46,7 @@ public class MaintenanceBookingService {
     private final CustomerRepository customerRepository;
     private final ServiceRepository serviceRepository;
     private final UserRepository userRepository;
+    private final PaymentRepository paymentRepository;
 
     @Transactional(readOnly = true)
     public Page<BookingResponse> getAll(BookingStatus status, LocalDateTime from,
@@ -51,17 +57,17 @@ public class MaintenanceBookingService {
         if ("ROLE_TECHNICIAN".equals(scope)) {
             Long currentUserId = getCurrentUserId();
             return bookingRepository.findAllWithFilter(status, from, to, currentUserId, customerId, pageable)
-                    .map(MaintenanceBookingService::toResponse);
+                    .map(this::toResponseWithPayment);
         }
 
         // ADMIN / MANAGEMENT: thấy tất cả
         return bookingRepository.findAllWithFilter(status, from, to, null, customerId, pageable)
-                .map(MaintenanceBookingService::toResponse);
+                .map(this::toResponseWithPayment);
     }
 
     @Transactional(readOnly = true)
     public BookingResponse getById(Long id) {
-        return toResponse(findBookingById(id));
+        return toResponseWithPayment(findBookingById(id));
     }
 
     /**
@@ -85,7 +91,9 @@ public class MaintenanceBookingService {
         booking.setNotes(request.getNotes());
         booking.setStatus(BookingStatus.PENDING);
 
-        return toResponse(bookingRepository.save(booking));
+        MaintenanceBooking saved = bookingRepository.save(booking);
+        createFreePaymentIfNeeded(saved);
+        return toResponseWithPayment(saved);
     }
 
     /**
@@ -109,18 +117,20 @@ public class MaintenanceBookingService {
         booking.setNotes(request.getNotes());
         booking.setStatus(BookingStatus.PENDING);
 
-        return toResponse(bookingRepository.save(booking));
+        MaintenanceBooking saved = bookingRepository.save(booking);
+        createFreePaymentIfNeeded(saved);
+        return toResponseWithPayment(saved);
     }
 
     /**
-     * Gán kỹ thuật viên: PENDING → CONFIRMED.
+     * Gán kỹ thuật viên: PENDING → CONFIRMED, hoặc đổi KTV khi CONFIRMED.
      * Chỉ ADMIN / MANAGEMENT gọi được (Controller enforce qua SecurityConfig).
      */
     @Transactional
     public BookingResponse assignTechnician(Long bookingId, BookingAssignRequest request) {
         MaintenanceBooking booking = findBookingById(bookingId);
 
-        if (booking.getStatus() != BookingStatus.PENDING) {
+        if (booking.getStatus() != BookingStatus.PENDING && booking.getStatus() != BookingStatus.CONFIRMED) {
             throw new InvalidStatusTransitionException(booking.getStatus().name(), BookingStatus.CONFIRMED.name());
         }
 
@@ -130,12 +140,12 @@ public class MaintenanceBookingService {
         booking.setTechnician(technician);
         booking.setStatus(BookingStatus.CONFIRMED);
 
-        return toResponse(bookingRepository.save(booking));
+        return toResponseWithPayment(bookingRepository.save(booking));
     }
 
     /**
      * Hoàn thành lịch: CONFIRMED → COMPLETED.
-     * Chỉ technician được gán mới được hoàn thành.
+     * ADMIN / MANAGEMENT hoặc technician được gán mới được hoàn thành.
      */
     @Transactional
     public BookingResponse complete(Long bookingId, BookingCompleteRequest request) {
@@ -148,9 +158,13 @@ public class MaintenanceBookingService {
             throw new InvalidStatusTransitionException(booking.getStatus().name(), BookingStatus.COMPLETED.name());
         }
 
-        Long currentUserId = getCurrentUserId();
-        if (booking.getTechnician() == null || !booking.getTechnician().getId().equals(currentUserId)) {
-            throw new AccessDeniedException("Chỉ kỹ thuật viên được gán mới có thể hoàn thành lịch này");
+        String scope = getCurrentScope();
+        boolean isAdminOrMgmt = "ROLE_ADMIN".equals(scope) || "ROLE_MANAGEMENT".equals(scope);
+        if (!isAdminOrMgmt) {
+            Long currentUserId = getCurrentUserId();
+            if (booking.getTechnician() == null || !booking.getTechnician().getId().equals(currentUserId)) {
+                throw new AccessDeniedException("Chỉ kỹ thuật viên được gán mới có thể hoàn thành lịch này");
+            }
         }
 
         if (request.getNotes() != null && !request.getNotes().isBlank()) {
@@ -158,7 +172,7 @@ public class MaintenanceBookingService {
         }
         booking.setStatus(BookingStatus.COMPLETED);
 
-        return toResponse(bookingRepository.save(booking));
+        return toResponseWithPayment(bookingRepository.save(booking));
     }
 
     /**
@@ -177,7 +191,17 @@ public class MaintenanceBookingService {
         }
 
         booking.setStatus(BookingStatus.CANCELLED);
-        return toResponse(bookingRepository.save(booking));
+        return toResponseWithPayment(bookingRepository.save(booking));
+    }
+
+    /**
+     * Cập nhật ghi chú lịch bảo trì.
+     */
+    @Transactional
+    public BookingResponse updateNotes(Long id, String notes) {
+        MaintenanceBooking booking = findBookingById(id);
+        booking.setNotes(notes);
+        return toResponseWithPayment(bookingRepository.save(booking));
     }
 
     // ─── helpers ───────────────────────────────────────────────────────────────
@@ -223,10 +247,15 @@ public class MaintenanceBookingService {
     }
 
     static BookingResponse toResponse(MaintenanceBooking booking) {
+        return toResponse(booking, null);
+    }
+
+    static BookingResponse toResponse(MaintenanceBooking booking, PaymentStatus paymentStatus) {
         return BookingResponse.builder()
                 .id(booking.getId())
                 .bookingCode(booking.getBookingCode())
                 .status(booking.getStatus())
+                .paymentStatus(paymentStatus)
                 .bookingDate(booking.getBookingDate())
                 .notes(booking.getNotes())
                 .createdAt(booking.getCreatedAt())
@@ -239,6 +268,60 @@ public class MaintenanceBookingService {
                 .serviceBasePrice(booking.getService().getBasePrice())
                 .technicianId(booking.getTechnician() != null ? booking.getTechnician().getId() : null)
                 .technicianUsername(booking.getTechnician() != null ? booking.getTechnician().getUsername() : null)
+                .technicianFullName(booking.getTechnician() != null ? booking.getTechnician().getFullName() : null)
                 .build();
+    }
+
+    private BookingResponse toResponseWithPayment(MaintenanceBooking booking) {
+        PaymentStatus ps = paymentRepository
+                .findTopByReferenceTypeAndReferenceIdOrderByCreatedAtDesc(PaymentReferenceType.BOOKING, booking.getId())
+                .map(Payment::getStatus)
+                .orElse(null);
+        return toResponse(booking, ps);
+    }
+
+    /**
+     * Cập nhật trạng thái thanh toán nhanh cho lịch bảo trì.
+     */
+    @Transactional
+    public BookingResponse updatePaymentStatus(Long id, PaymentStatus newStatus) {
+        MaintenanceBooking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking", id));
+
+        Payment payment = paymentRepository
+                .findTopByReferenceTypeAndReferenceIdOrderByCreatedAtDesc(PaymentReferenceType.BOOKING, id)
+                .orElseGet(() -> {
+                    Payment p = new Payment();
+                    p.setReferenceType(PaymentReferenceType.BOOKING);
+                    p.setReferenceId(booking.getId());
+                    p.setReferenceCode(booking.getBookingCode());
+                    p.setAmountVnd(booking.getService().getBasePrice());
+                    p.setCurrency("VND");
+                    p.setMethod(PaymentMethod.FREE);
+                    return p;
+                });
+
+        payment.setStatus(newStatus);
+        paymentRepository.save(payment);
+
+        return toResponse(booking, newStatus);
+    }
+
+    /**
+     * Nếu booking có serviceBasePrice = 0, tự động tạo Payment với status = FREE.
+     */
+    private void createFreePaymentIfNeeded(MaintenanceBooking booking) {
+        if (booking.getService().getBasePrice().compareTo(java.math.BigDecimal.ZERO) == 0) {
+            Payment payment = new Payment();
+            payment.setReferenceType(PaymentReferenceType.BOOKING);
+            payment.setReferenceId(booking.getId());
+            payment.setReferenceCode(booking.getBookingCode());
+            payment.setAmountVnd(java.math.BigDecimal.ZERO);
+            payment.setAmountUsd(java.math.BigDecimal.ZERO);
+            payment.setCurrency("VND");
+            payment.setMethod(PaymentMethod.FREE);
+            payment.setStatus(PaymentStatus.FREE);
+            paymentRepository.save(payment);
+        }
     }
 }
