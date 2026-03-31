@@ -60,6 +60,11 @@ public class CustomerService {
             throw new IllegalArgumentException("Số điện thoại '" + request.getPhone() + "' đã tồn tại");
         }
 
+        if (request.getEmail() != null && !request.getEmail().isBlank()
+                && customerRepository.existsByEmail(request.getEmail())) {
+            throw new IllegalArgumentException("Email '" + request.getEmail() + "' đã tồn tại");
+        }
+
         Long currentUserId = getCurrentUserId();
         User createdBy = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", currentUserId));
@@ -94,6 +99,7 @@ public class CustomerService {
         customer.setFullName(request.getFullName());
         customer.setPhone(request.getPhone());
         customer.setAddress(request.getAddress());
+        customer.setEmail(request.getEmail() != null && !request.getEmail().isBlank() ? request.getEmail() : null);
         // createdBy = tài khoản khách hàng nếu có, ngược lại = nhân viên tạo
         customer.setCreatedBy(customerUser != null ? customerUser : createdBy);
 
@@ -116,6 +122,14 @@ public class CustomerService {
         }
         if (request.getAddress() != null) {
             customer.setAddress(request.getAddress());
+        }
+        if (request.getEmail() != null) {
+            if (!request.getEmail().isBlank()
+                    && !request.getEmail().equals(customer.getEmail())
+                    && customerRepository.existsByEmail(request.getEmail())) {
+                throw new IllegalArgumentException("Email '" + request.getEmail() + "' đã tồn tại");
+            }
+            customer.setEmail(request.getEmail().isBlank() ? null : request.getEmail());
         }
 
         return toResponse(customerRepository.save(customer));
@@ -155,6 +169,14 @@ public class CustomerService {
         }
         if (request.getAddress() != null) {
             customer.setAddress(request.getAddress());
+        }
+        if (request.getEmail() != null) {
+            if (!request.getEmail().isBlank()
+                    && !request.getEmail().equals(customer.getEmail())
+                    && customerRepository.existsByEmail(request.getEmail())) {
+                throw new IllegalArgumentException("Email '" + request.getEmail() + "' đã tồn tại");
+            }
+            customer.setEmail(request.getEmail().isBlank() ? null : request.getEmail());
         }
 
         return toResponse(customerRepository.save(customer));
@@ -196,6 +218,7 @@ public class CustomerService {
                 .id(customer.getId())
                 .fullName(customer.getFullName())
                 .phone(customer.getPhone())
+                .email(customer.getEmail())
                 .address(customer.getAddress())
                 .createdAt(customer.getCreatedAt())
                 .createdById(customer.getCreatedBy() != null ? customer.getCreatedBy().getId() : null)

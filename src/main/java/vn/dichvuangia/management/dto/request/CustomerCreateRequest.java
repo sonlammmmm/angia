@@ -1,5 +1,6 @@
 package vn.dichvuangia.management.dto.request;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -18,6 +19,9 @@ public class CustomerCreateRequest {
     private String phone;
 
     private String address;
+
+    @Email(message = "Email không hợp lệ")
+    private String email;
 
     // ── Optional: tạo tài khoản đăng nhập cho khách hàng ───────────────────
     @Size(min = 3, message = "Tên đăng nhập phải có ít nhất 3 ký tự")

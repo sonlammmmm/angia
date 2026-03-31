@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import vn.dichvuangia.management.common.ApiResponse;
 import vn.dichvuangia.management.dto.request.ChangePasswordRequest;
+import vn.dichvuangia.management.dto.request.GoogleLoginRequest;
 import vn.dichvuangia.management.dto.request.LoginRequest;
 import vn.dichvuangia.management.dto.request.RegisterRequest;
 import vn.dichvuangia.management.dto.response.AuthResponse;
@@ -67,6 +68,26 @@ public class AuthController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .body(ApiResponse.success("Đăng nhập thành công", authResponse));
+    }
+
+    // ── POST /auth/google ──────────────────────────────────────────────────────
+
+    @Operation(summary = "Đăng nhập bằng Google — gửi ID token từ Google Sign-In")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Đăng nhập Google thành công"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Google ID token không hợp lệ")
+    })
+    @PostMapping("/google")
+    public ResponseEntity<ApiResponse<AuthResponse>> googleLogin(
+            @Valid @RequestBody GoogleLoginRequest request) {
+
+        AuthResponse authResponse = authService.googleLogin(request);
+
+        ResponseCookie cookie = buildRefreshCookie(authResponse.getRefreshToken(), COOKIE_MAX_AGE);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(ApiResponse.success("Đăng nhập Google thành công", authResponse));
     }
 
     // ── POST /auth/refresh ─────────────────────────────────────────────────────

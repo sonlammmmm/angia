@@ -16,6 +16,10 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
     boolean existsByPhone(String phone);
 
+    boolean existsByEmail(String email);
+
+    Optional<Customer> findByEmail(String email);
+
     // Tìm Customer profile theo User ID (cho khách hàng tự đăng ký — createdBy = chính mình)
     Optional<Customer> findByCreatedBy_Id(Long userId);
 }

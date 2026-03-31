@@ -1,5 +1,6 @@
 package vn.dichvuangia.management.dto.request;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.Setter;
@@ -14,4 +15,7 @@ public class CustomerUpdateRequest {
     private String phone;
 
     private String address;
+
+    @Email(message = "Email không hợp lệ")
+    private String email;
 }

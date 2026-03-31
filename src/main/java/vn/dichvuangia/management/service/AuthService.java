@@ -1,6 +1,7 @@
 package vn.dichvuangia.management.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -10,7 +11,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
 import vn.dichvuangia.management.dto.request.ChangePasswordRequest;
+import vn.dichvuangia.management.dto.request.GoogleLoginRequest;
 import vn.dichvuangia.management.dto.request.LoginRequest;
 import vn.dichvuangia.management.dto.request.RegisterRequest;
 import vn.dichvuangia.management.dto.response.AuthResponse;
@@ -27,9 +33,11 @@ import vn.dichvuangia.management.repository.UserRepository;
 import vn.dichvuangia.management.security.JwtService;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.Objects;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -47,6 +55,9 @@ public class AuthService {
 
     @Value("${app.jwt.refresh-expiration:604800}")
     private long refreshExpiration;
+
+    @Value("${app.google.client-id:}")
+    private String googleClientId;
 
     /**
      * Đăng ký tài khoản khách hàng.
@@ -122,6 +133,84 @@ public class AuthService {
                 .expiresIn(jwtExpiration)
                 .refreshToken(refreshToken)
                 .build();
+    }
+
+    /**
+     * Đăng nhập bằng Google — verify ID token, tạo/tìm user rồi cấp JWT.
+     * Nếu user chưa tồn tại → tạo mới với role CUSTOMER + Customer profile.
+     */
+    @Transactional
+    public AuthResponse googleLogin(GoogleLoginRequest request) {
+        // 1. Verify Google ID token
+        GoogleIdToken.Payload googlePayload = verifyGoogleToken(request.getCredential());
+
+        String email = googlePayload.getEmail();
+        String fullName = (String) googlePayload.get("name");
+        if (fullName == null || fullName.isBlank()) {
+            fullName = email.split("@")[0];
+        }
+
+        // 2. Tìm user theo email, nếu chưa có → tạo mới
+        User user = userRepository.findByEmail(email).orElse(null);
+
+        if (user == null) {
+            // Tạo User mới với role CUSTOMER
+            Role customerRole = roleRepository.findByName("CUSTOMER")
+                    .orElseThrow(() -> new ResourceNotFoundException("Role CUSTOMER chưa được khởi tạo"));
+
+            user = new User();
+            user.setUsername(email); // dùng email làm username
+            user.setEmail(email);
+            user.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString())); // random password
+            user.setRole(customerRole);
+            user.setIsActive(true);
+            user = userRepository.save(user);
+
+            // Tạo Customer profile
+            Customer customer = new Customer();
+            customer.setFullName(fullName);
+            customer.setCreatedBy(user);
+            customerRepository.save(customer);
+        }
+
+        // 3. Cấp token
+        String accessToken = jwtService.generateAccessToken(user);
+        String refreshToken = createRefreshToken(user);
+
+        return AuthResponse.builder()
+                .accessToken(accessToken)
+                .tokenType("Bearer")
+                .expiresIn(jwtExpiration)
+                .refreshToken(refreshToken)
+                .build();
+    }
+
+    /**
+     * Verify Google ID Token bằng google-api-client.
+     */
+    private GoogleIdToken.Payload verifyGoogleToken(String idTokenString) {
+        try {
+            log.debug("Verifying Google ID token, clientId={}", googleClientId);
+            log.debug("ID token (first 50 chars): {}", idTokenString.substring(0, Math.min(50, idTokenString.length())));
+
+            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
+                    new NetHttpTransport(), GsonFactory.getDefaultInstance())
+                    .setAudience(Collections.singletonList(googleClientId))
+                    .build();
+
+            GoogleIdToken idToken = verifier.verify(idTokenString);
+            if (idToken == null) {
+                log.error("GoogleIdTokenVerifier.verify() returned null — token invalid or audience mismatch. Expected audience: {}", googleClientId);
+                throw new IllegalArgumentException("Google ID token không hợp lệ");
+            }
+            log.debug("Google token verified successfully, email={}", idToken.getPayload().getEmail());
+            return idToken.getPayload();
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Google token verification exception: ", e);
+            throw new IllegalArgumentException("Không thể xác thực Google ID token: " + e.getMessage());
+        }
     }
 
     /**

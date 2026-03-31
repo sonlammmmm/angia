@@ -101,11 +101,14 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // Public
-                        .requestMatchers("/auth/register", "/auth/login", "/auth/refresh", "/auth/logout").permitAll()
+                        .requestMatchers("/auth/register", "/auth/login", "/auth/refresh", "/auth/logout", "/auth/google").permitAll()
                         .requestMatchers("/auth/change-password").authenticated()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/products/**", "/brands/**", "/services/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/files/**").permitAll()
+
+                        // WebSocket endpoint (xác thực qua STOMP header, không qua HTTP)
+                        .requestMatchers("/ws/**").permitAll()
 
                         // Guest checkout (khách vãng lai — không cần đăng nhập)
                         .requestMatchers("/guest/**").permitAll()
@@ -137,6 +140,15 @@ public class SecurityConfig {
                         // Booking: hủy (ADMIN, MANAGEMENT)
                         .requestMatchers("/maintenance-bookings/*/cancel")
                                 .hasAnyRole("ADMIN", "MANAGEMENT")
+
+                        // Chat: customer lấy conversation của mình
+                        .requestMatchers("/chat/my-conversation").hasRole("CUSTOMER")
+                        // Chat: customer + admin đều cần xem messages
+                        .requestMatchers(HttpMethod.GET, "/chat/conversations/*/messages")
+                                .authenticated()
+                        // Chat: admin-only endpoints (danh sách conversations, takeover, close, online-admins)
+                        .requestMatchers("/chat/conversations/**", "/chat/online-admins")
+                                .hasAnyRole("ADMIN", "MANAGEMENT", "SALE")
 
                         // Tạo đơn hàng & đặt lịch bảo trì: mọi user đã xác thực (bao gồm CUSTOMER)
                         .anyRequest().authenticated()
