@@ -12,12 +12,15 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import vn.dichvuangia.management.common.ApiResponse;
+import org.springframework.format.annotation.DateTimeFormat;
 import vn.dichvuangia.management.common.enums.OrderStatus;
 import vn.dichvuangia.management.common.enums.PaymentStatus;
 import vn.dichvuangia.management.dto.request.OrderCreateRequest;
 import vn.dichvuangia.management.dto.request.OrderStatusUpdateRequest;
 import vn.dichvuangia.management.dto.response.OrderResponse;
 import vn.dichvuangia.management.service.OrderService;
+
+import java.time.LocalDateTime;
 
 @Tag(name = "Orders", description = "Quản lý đơn hàng")
 @RestController
@@ -27,7 +30,7 @@ public class OrderController {
 
     private final OrderService orderService;
 
-    @Operation(summary = "Danh sách đơn hàng — SALE chỉ thấy đơn của mình. Query: status, customerId")
+    @Operation(summary = "Danh sách đơn hàng — SALE chỉ thấy đơn của mình. Query: status, customerId, from, to")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Thành công")
     })
@@ -35,8 +38,10 @@ public class OrderController {
     public ResponseEntity<ApiResponse<Page<OrderResponse>>> getAll(
             @RequestParam(required = false) OrderStatus status,
             @RequestParam(required = false) Long customerId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        return ResponseEntity.ok(ApiResponse.success(orderService.getAll(status, customerId, pageable)));
+        return ResponseEntity.ok(ApiResponse.success(orderService.getAll(status, customerId, from, to, pageable)));
     }
 
     @Operation(summary = "Chi tiết đơn hàng kèm danh sách sản phẩm")

@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import vn.dichvuangia.management.common.enums.OrderStatus;
 import vn.dichvuangia.management.entity.Order;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
@@ -31,10 +32,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             WHERE (:status IS NULL OR o.status = :status)
               AND (:saleId IS NULL OR o.sale.id = :saleId)
               AND (:customerId IS NULL OR o.customer.id = :customerId)
+              AND (:from IS NULL OR o.createdAt >= :from)
+              AND (:to IS NULL OR o.createdAt <= :to)
             """)
     Page<Order> findAllWithFilter(
             @Param("status") OrderStatus status,
             @Param("saleId") Long saleId,
             @Param("customerId") Long customerId,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to,
             Pageable pageable);
 }

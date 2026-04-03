@@ -37,8 +37,9 @@ public class ProductService {
     private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
-    public Page<ProductResponse> getAll(ProductType type, Long brandId, Pageable pageable) {
-        return productRepository.findAllWithFilter(type, brandId, pageable)
+    public Page<ProductResponse> getAll(ProductType type, Long brandId, String q, Pageable pageable) {
+        String searchTerm = (q != null && !q.isBlank()) ? q.trim() : null;
+        return productRepository.findAllWithFilter(type, brandId, searchTerm, pageable)
                 .map(this::toResponse);
     }
 

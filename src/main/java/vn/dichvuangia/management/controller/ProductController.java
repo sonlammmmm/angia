@@ -26,7 +26,7 @@ public class ProductController {
 
     private final ProductService productService;
 
-    @Operation(summary = "Danh sách sản phẩm (Public). Query: type, brandId")
+    @Operation(summary = "Danh sách sản phẩm (Public). Query: type, brandId, q (tìm theo tên/mã)")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Thành công")
     })
@@ -34,8 +34,9 @@ public class ProductController {
     public ResponseEntity<ApiResponse<Page<ProductResponse>>> getAll(
             @RequestParam(required = false) ProductType type,
             @RequestParam(required = false) Long brandId,
+            @RequestParam(required = false) String q,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        return ResponseEntity.ok(ApiResponse.success(productService.getAll(type, brandId, pageable)));
+        return ResponseEntity.ok(ApiResponse.success(productService.getAll(type, brandId, q, pageable)));
     }
 
     @Operation(summary = "Chi tiết sản phẩm kèm specs và hình ảnh (Public)")

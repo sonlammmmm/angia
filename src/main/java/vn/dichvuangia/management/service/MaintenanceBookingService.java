@@ -73,11 +73,30 @@ public class MaintenanceBookingService {
     /**
      * Tạo lịch: status = PENDING, technicianId = null.
      * Booking code = BK-{yyyyMMdd}-{5digits}.
+     * <p>
+     * Flow khách hàng:
+     * 1. Nếu có customerId → dùng Customer đã tồn tại.
+     * 2. Nếu không có customerId → tìm theo phone:
+     *    - Nếu tìm thấy → dùng Customer đó (cập nhật fullName/address nếu thay đổi).
+     *    - Nếu không tìm thấy → tạo mới Customer với phone + fullName.
      */
     @Transactional
     public BookingResponse create(BookingCreateRequest request) {
-        Customer customer = customerRepository.findById(request.getCustomerId())
-                .orElseThrow(() -> new ResourceNotFoundException("Customer", request.getCustomerId()));
+        Customer customer;
+        if (request.getCustomerId() != null) {
+            // Chọn khách hàng đã đăng ký
+            customer = customerRepository.findById(request.getCustomerId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Customer", request.getCustomerId()));
+        } else {
+            // Tìm hoặc tạo khách hàng theo SĐT
+            if (request.getPhone() == null || request.getPhone().isBlank()) {
+                throw new IllegalArgumentException("Số điện thoại không được để trống khi không chọn khách hàng");
+            }
+            if (request.getFullName() == null || request.getFullName().isBlank()) {
+                throw new IllegalArgumentException("Họ tên không được để trống khi không chọn khách hàng");
+            }
+            customer = findOrCreateCustomerByPhone(request);
+        }
 
         vn.dichvuangia.management.entity.Service service = serviceRepository
                 .findByIdAndIsDeletedFalse(request.getServiceId())
@@ -221,6 +240,30 @@ public class MaintenanceBookingService {
                     c.setFullName(fullName);
                     c.setPhone(phone);
                     c.setAddress(address);
+                    return customerRepository.save(c);
+                });
+    }
+
+    /**
+     * Tìm Customer theo SĐT, nếu tìm thấy thì cập nhật thông tin (nếu thay đổi),
+     * nếu chưa có thì tạo mới — dùng cho booking dashboard (Staff/Sale).
+     */
+    private Customer findOrCreateCustomerByPhone(BookingCreateRequest request) {
+        return customerRepository.findByPhone(request.getPhone())
+                .map(existing -> {
+                    if (request.getFullName() != null && !request.getFullName().isBlank()) {
+                        existing.setFullName(request.getFullName());
+                    }
+                    if (request.getAddress() != null && !request.getAddress().isBlank()) {
+                        existing.setAddress(request.getAddress());
+                    }
+                    return customerRepository.save(existing);
+                })
+                .orElseGet(() -> {
+                    Customer c = new Customer();
+                    c.setFullName(request.getFullName());
+                    c.setPhone(request.getPhone());
+                    c.setAddress(request.getAddress());
                     return customerRepository.save(c);
                 });
     }

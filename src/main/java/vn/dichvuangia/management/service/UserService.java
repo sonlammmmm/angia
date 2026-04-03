@@ -31,7 +31,7 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public Page<UserResponse> getAll(Pageable pageable) {
-        return userRepository.findAll(pageable).map(this::toResponseWithFullName);
+        return userRepository.findAllStaff(pageable).map(this::toResponseWithFullName);
     }
 
     @Transactional(readOnly = true)

@@ -35,23 +35,33 @@ public class CustomerService {
     /**
      * ADMIN / MANAGEMENT → thấy tất cả khách hàng.
      * SALE → chỉ thấy khách do mình tạo (data-level security).
+     * Hỗ trợ tìm kiếm theo tên hoặc SĐT qua tham số q.
      */
     @Transactional(readOnly = true)
-    public Page<CustomerResponse> getAll(Pageable pageable) {
+    public Page<CustomerResponse> getAll(String q, Pageable pageable) {
         String scope = getCurrentScope();
+        String searchTerm = (q != null && !q.isBlank()) ? q.trim() : null;
 
         if ("ROLE_SALE".equals(scope)) {
             Long currentUserId = getCurrentUserId();
-            return customerRepository.findAllByCreatedBy_Id(currentUserId, pageable)
+            return customerRepository.searchAllByCreatedBy(currentUserId, searchTerm, pageable)
                     .map(CustomerService::toResponse);
         }
 
-        return customerRepository.findAll(pageable).map(CustomerService::toResponse);
+        return customerRepository.searchAll(searchTerm, pageable).map(CustomerService::toResponse);
     }
 
     @Transactional(readOnly = true)
     public CustomerResponse getById(Long id) {
         return toResponse(findCustomerById(id));
+    }
+
+    /**
+     * Tra cứu khách hàng theo SĐT — trả về Optional (dùng cho lookup khi tạo đơn hàng).
+     */
+    @Transactional(readOnly = true)
+    public java.util.Optional<CustomerResponse> findByPhone(String phone) {
+        return customerRepository.findByPhone(phone).map(CustomerService::toResponse);
     }
 
     @Transactional

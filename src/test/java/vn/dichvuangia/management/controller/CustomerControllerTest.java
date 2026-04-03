@@ -115,7 +115,7 @@ class CustomerControllerTest {
     @DisplayName("GET /customers - ADMIN → 200")
     @WithMockUser(roles = "ADMIN")
     void getAll_asAdmin_returns200() throws Exception {
-        when(customerService.getAll(any(Pageable.class)))
+        when(customerService.getAll(any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(sampleCustomer())));
 
         mockMvc.perform(get("/customers"))
@@ -127,7 +127,7 @@ class CustomerControllerTest {
     @DisplayName("GET /customers - SALE → 200")
     @WithMockUser(roles = "SALE")
     void getAll_asSale_returns200() throws Exception {
-        when(customerService.getAll(any(Pageable.class)))
+        when(customerService.getAll(any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(sampleCustomer())));
 
         mockMvc.perform(get("/customers"))

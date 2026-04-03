@@ -1,5 +1,7 @@
 package vn.dichvuangia.management.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,4 +22,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT u FROM User u JOIN FETCH u.role WHERE u.email = :email")
     Optional<User> findByEmail(@Param("email") String email);
+
+    /** Lấy danh sách nhân viên (loại trừ CUSTOMER) */
+    @Query("SELECT u FROM User u JOIN u.role r WHERE r.name <> 'CUSTOMER'")
+    Page<User> findAllStaff(Pageable pageable);
 }

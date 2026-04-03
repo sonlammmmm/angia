@@ -67,7 +67,7 @@ class ProductControllerTest {
     @Test
     @DisplayName("GET /products - public → 200")
     void getAll_public_returns200() throws Exception {
-        when(productService.getAll(any(), any(), any(Pageable.class)))
+        when(productService.getAll(any(), any(), any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(sampleProduct())));
 
         mockMvc.perform(get("/products"))
@@ -79,7 +79,7 @@ class ProductControllerTest {
     @Test
     @DisplayName("GET /products?type=MACHINE - lọc theo type → 200")
     void getAll_withTypeFilter_returns200() throws Exception {
-        when(productService.getAll(eq(ProductType.MACHINE), any(), any(Pageable.class)))
+        when(productService.getAll(eq(ProductType.MACHINE), any(), any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(sampleProduct())));
 
         mockMvc.perform(get("/products").param("type", "MACHINE"))

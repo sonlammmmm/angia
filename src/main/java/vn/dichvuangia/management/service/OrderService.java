@@ -57,18 +57,18 @@ public class OrderService {
     private final PaymentRepository paymentRepository;
 
     @Transactional(readOnly = true)
-    public Page<OrderResponse> getAll(OrderStatus status, Long customerId, Pageable pageable) {
+    public Page<OrderResponse> getAll(OrderStatus status, Long customerId, LocalDateTime from, LocalDateTime to, Pageable pageable) {
         String scope = getCurrentScope();
 
         // SALE: chỉ thấy đơn của mình
         if ("ROLE_SALE".equals(scope)) {
             Long currentUserId = getCurrentUserId();
-            return orderRepository.findAllWithFilter(status, currentUserId, customerId, pageable)
+            return orderRepository.findAllWithFilter(status, currentUserId, customerId, from, to, pageable)
                     .map(this::toResponseWithPayment);
         }
 
         // ADMIN / MANAGEMENT: thấy tất cả
-        return orderRepository.findAllWithFilter(status, null, customerId, pageable)
+        return orderRepository.findAllWithFilter(status, null, customerId, from, to, pageable)
                 .map(this::toResponseWithPayment);
     }
 
@@ -78,20 +78,37 @@ public class OrderService {
     }
 
     /**
-     * Tạo đơn hàng:
-     * 1. Validate tồn kho (không trừ ngay — chỉ trừ khi COMPLETED)
-     * 2. Sinh order_code = ORD-{yyyyMMdd}-{5digits}
-     * 3. Snapshot unit_price từ product.price tại thời điểm mua
-     * 4. Tính total_amount
+     * Tạo đơn hàng (Staff/Sale):
+     * <p>
+     * Flow khách hàng:
+     * 1. Nếu có customerId → dùng Customer đã tồn tại.
+     * 2. Nếu không có customerId → tìm theo phone:
+     *    - Nếu tìm thấy → dùng Customer đó (cập nhật fullName/email/address nếu thay đổi).
+     *    - Nếu không tìm thấy → tạo mới Customer với phone + fullName.
+     * <p>
+     * Validate tồn kho, sinh order_code, snapshot unit_price.
      */
     @Transactional
     public OrderResponse create(OrderCreateRequest request) {
-        Customer customer = customerRepository.findById(request.getCustomerId())
-                .orElseThrow(() -> new ResourceNotFoundException("Customer", request.getCustomerId()));
-
         Long currentUserId = getCurrentUserId();
         User sale = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", currentUserId));
+
+        Customer customer;
+        if (request.getCustomerId() != null) {
+            // Chọn khách hàng đã đăng ký
+            customer = customerRepository.findById(request.getCustomerId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Customer", request.getCustomerId()));
+        } else {
+            // Tìm hoặc tạo khách hàng theo SĐT
+            if (request.getPhone() == null || request.getPhone().isBlank()) {
+                throw new IllegalArgumentException("Số điện thoại không được để trống khi không chọn khách hàng");
+            }
+            if (request.getFullName() == null || request.getFullName().isBlank()) {
+                throw new IllegalArgumentException("Họ tên không được để trống khi không chọn khách hàng");
+            }
+            customer = findOrCreateCustomerByPhone(request, sale);
+        }
 
         // Validate stock trước
         List<Product> products = request.getItems().stream()
@@ -283,6 +300,36 @@ public class OrderService {
                     c.setFullName(fullName);
                     c.setPhone(phone);
                     c.setAddress(address);
+                    return customerRepository.save(c);
+                });
+    }
+
+    /**
+     * Tìm Customer theo SĐT, nếu tìm thấy thì cập nhật thông tin (nếu thay đổi),
+     * nếu chưa có thì tạo mới — gắn createdBy = Sale hiện tại.
+     */
+    private Customer findOrCreateCustomerByPhone(OrderCreateRequest request, User sale) {
+        return customerRepository.findByPhone(request.getPhone())
+                .map(existing -> {
+                    // Cập nhật thông tin mới nhất nếu Sale cung cấp
+                    if (request.getFullName() != null && !request.getFullName().isBlank()) {
+                        existing.setFullName(request.getFullName());
+                    }
+                    if (request.getEmail() != null && !request.getEmail().isBlank()) {
+                        existing.setEmail(request.getEmail());
+                    }
+                    if (request.getShippingAddress() != null && !request.getShippingAddress().isBlank()) {
+                        existing.setAddress(request.getShippingAddress());
+                    }
+                    return customerRepository.save(existing);
+                })
+                .orElseGet(() -> {
+                    Customer c = new Customer();
+                    c.setFullName(request.getFullName());
+                    c.setPhone(request.getPhone());
+                    c.setEmail(request.getEmail());
+                    c.setAddress(request.getShippingAddress());
+                    c.setCreatedBy(sale);
                     return customerRepository.save(c);
                 });
     }

@@ -149,18 +149,21 @@ class MaintenanceBookingControllerTest {
     }
 
     @Test
-    @DisplayName("POST /maintenance-bookings - thiếu customerId → 400")
+    @DisplayName("POST /maintenance-bookings - không có customerId nhưng có phone + fullName → 201")
     @WithMockUser(roles = "SALE")
-    void create_missingCustomerId_returns400() throws Exception {
+    void create_withPhoneAndFullName_returns201() throws Exception {
         BookingCreateRequest req = new BookingCreateRequest();
+        req.setPhone("0901234567");
+        req.setFullName("Khách vãng lai");
         req.setServiceId(1L);
         req.setBookingDate(LocalDateTime.now().plusDays(3));
-        // thiếu customerId
+
+        when(bookingService.create(any())).thenReturn(sampleBooking());
 
         mockMvc.perform(post("/maintenance-bookings")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isCreated());
     }
 
     @Test

@@ -51,14 +51,15 @@ public class CustomerController {
 
     // ── Endpoints dành cho nhân viên (ADMIN, MANAGEMENT, SALE) ─────────────────
 
-    @Operation(summary = "Danh sách khách hàng — SALE chỉ thấy khách do mình tạo")
+    @Operation(summary = "Danh sách khách hàng — SALE chỉ thấy khách do mình tạo. Query: q (tìm theo tên/SĐT)")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Thành công")
     })
     @GetMapping
     public ResponseEntity<ApiResponse<Page<CustomerResponse>>> getAll(
+            @RequestParam(required = false) String q,
             @PageableDefault(size = 10, sort = "createdAt") Pageable pageable) {
-        return ResponseEntity.ok(ApiResponse.success(customerService.getAll(pageable)));
+        return ResponseEntity.ok(ApiResponse.success(customerService.getAll(q, pageable)));
     }
 
     @Operation(summary = "Chi tiết khách hàng")
@@ -69,6 +70,16 @@ public class CustomerController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<CustomerResponse>> getById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(customerService.getById(id)));
+    }
+
+    @Operation(summary = "Tra cứu khách hàng theo SĐT — trả về null nếu không tìm thấy")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Thành công (data có thể null)")
+    })
+    @GetMapping("/lookup")
+    public ResponseEntity<ApiResponse<CustomerResponse>> lookupByPhone(
+            @RequestParam String phone) {
+        return ResponseEntity.ok(ApiResponse.success(customerService.findByPhone(phone).orElse(null)));
     }
 
     @Operation(summary = "Tạo hồ sơ khách hàng mới")
