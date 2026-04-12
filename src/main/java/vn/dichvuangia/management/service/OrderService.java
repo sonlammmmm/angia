@@ -46,9 +46,8 @@ public class OrderService {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final Random RANDOM = new Random();
 
-    // CANCELLED là terminal duy nhất.
-    // COMPLETED → CANCELLED được phép (hoàn đơn) — cộng lại stock.
-    private static final Set<OrderStatus> TERMINAL = Set.of(OrderStatus.CANCELLED);
+    // COMPLETED/CANCELLED là trạng thái kết thúc, không cho phép chuyển tiếp.
+    private static final Set<OrderStatus> TERMINAL = Set.of(OrderStatus.CANCELLED, OrderStatus.COMPLETED);
 
     private final OrderRepository orderRepository;
     private final CustomerRepository customerRepository;
@@ -232,15 +231,6 @@ public class OrderService {
             }
         }
 
-        if (next == OrderStatus.CANCELLED && current == OrderStatus.COMPLETED) {
-            // Hoàn đơn: cộng lại tồn kho
-            for (OrderItem item : order.getItems()) {
-                Product product = item.getProduct();
-                product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
-                productRepository.save(product);
-            }
-        }
-
         order.setStatus(next);
         return toResponseWithPayment(orderRepository.save(order));
     }
@@ -264,7 +254,6 @@ public class OrderService {
         boolean valid = switch (from) {
             case PENDING    -> to == OrderStatus.PROCESSING || to == OrderStatus.CANCELLED;
             case PROCESSING -> to == OrderStatus.COMPLETED  || to == OrderStatus.CANCELLED;
-            case COMPLETED  -> to == OrderStatus.CANCELLED; // hoàn đơn — cộng lại stock
             default         -> false;
         };
         if (!valid) {

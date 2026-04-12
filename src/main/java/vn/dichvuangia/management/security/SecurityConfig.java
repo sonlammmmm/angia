@@ -137,9 +137,9 @@ public class SecurityConfig {
                         .requestMatchers("/maintenance-bookings/*/complete")
                                 .hasAnyRole("ADMIN", "TECHNICIAN")
 
-                        // Booking: hủy (ADMIN, MANAGEMENT)
+                        // Booking: hủy (ADMIN, MANAGEMENT, CUSTOMER)
                         .requestMatchers("/maintenance-bookings/*/cancel")
-                                .hasAnyRole("ADMIN", "MANAGEMENT")
+                                .hasAnyRole("ADMIN", "MANAGEMENT", "CUSTOMER")
 
                         // Chat: customer lấy conversation của mình
                         .requestMatchers("/chat/my-conversation").hasRole("CUSTOMER")

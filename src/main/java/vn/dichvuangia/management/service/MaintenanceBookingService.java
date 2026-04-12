@@ -204,6 +204,16 @@ public class MaintenanceBookingService {
     public BookingResponse cancel(Long bookingId) {
         MaintenanceBooking booking = findBookingById(bookingId);
 
+        String scope = getCurrentScope();
+        if ("ROLE_CUSTOMER".equals(scope)) {
+            Long currentUserId = getCurrentUserId();
+            Customer customer = customerRepository.findByCreatedBy_Id(currentUserId)
+                    .orElseThrow(() -> new AccessDeniedException("Không tìm thấy hồ sơ khách hàng"));
+            if (!booking.getCustomer().getId().equals(customer.getId())) {
+                throw new AccessDeniedException("Bạn không có quyền hủy lịch này");
+            }
+        }
+
         if (booking.getStatus() == BookingStatus.COMPLETED) {
             throw new BookingAlreadyCompletedException(bookingId);
         }

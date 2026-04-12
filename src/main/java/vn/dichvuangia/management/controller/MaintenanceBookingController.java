@@ -99,7 +99,7 @@ public class MaintenanceBookingController {
                 bookingService.complete(id, req)));
     }
 
-    @Operation(summary = "Hủy lịch → CANCELLED — ADMIN, MANAGEMENT")
+        @Operation(summary = "Hủy lịch → CANCELLED — ADMIN, MANAGEMENT, CUSTOMER (chỉ lịch của mình)")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Đã hủy"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Lịch đã hoàn thành, không thể hủy"),
