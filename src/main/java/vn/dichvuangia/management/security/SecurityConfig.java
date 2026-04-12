@@ -38,6 +38,7 @@ public class SecurityConfig {
 
     private final UserDetailsServiceImpl userDetailsService;
     private final CorsConfigurationSource corsConfigurationSource;
+                private final RateLimitFilter rateLimitFilter; // Filter rate limit cho request
 
     @Value("${app.jwt.secret}")
     private String jwtSecret;
@@ -157,6 +158,7 @@ public class SecurityConfig {
                         .decoder(jwtDecoder())
                         .jwtAuthenticationConverter(jwtAuthenticationConverter())
                 ))
+                                                .addFilterAfter(rateLimitFilter, org.springframework.security.web.authentication.AnonymousAuthenticationFilter.class) // Chèn rate limit sau khi xác thực ẩn danh
                 .build();
     }
 }
