@@ -72,11 +72,16 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("GET /users - MANAGEMENT → 403")
+    @DisplayName("GET /users - MANAGEMENT → 200")
     @WithMockUser(roles = "MANAGEMENT")
-    void getAll_asManagement_returns403() throws Exception {
-        mockMvc.perform(get("/users"))
-                .andExpect(status().isForbidden());
+    void getAll_asManagement_returns200() throws Exception {
+    when(userService.getAll(any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(sampleUser())));
+
+    mockMvc.perform(get("/users"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("success"))
+        .andExpect(jsonPath("$.data.content[0].username").value("sale01"));
     }
 
     @Test

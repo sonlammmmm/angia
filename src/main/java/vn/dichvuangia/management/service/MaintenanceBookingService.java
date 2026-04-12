@@ -112,6 +112,7 @@ public class MaintenanceBookingService {
 
         MaintenanceBooking saved = bookingRepository.save(booking);
         createFreePaymentIfNeeded(saved);
+        createCashPaymentIfNeeded(saved, request.getPaymentMethod());
         return toResponseWithPayment(saved);
     }
 
@@ -138,6 +139,7 @@ public class MaintenanceBookingService {
 
         MaintenanceBooking saved = bookingRepository.save(booking);
         createFreePaymentIfNeeded(saved);
+        createCashPaymentIfNeeded(saved, request.getPaymentMethod());
         return toResponseWithPayment(saved);
     }
 
@@ -290,15 +292,16 @@ public class MaintenanceBookingService {
     }
 
     static BookingResponse toResponse(MaintenanceBooking booking) {
-        return toResponse(booking, null);
+        return toResponse(booking, null, null);
     }
 
-    static BookingResponse toResponse(MaintenanceBooking booking, PaymentStatus paymentStatus) {
+    static BookingResponse toResponse(MaintenanceBooking booking, PaymentStatus paymentStatus, PaymentMethod paymentMethod) {
         return BookingResponse.builder()
                 .id(booking.getId())
                 .bookingCode(booking.getBookingCode())
                 .status(booking.getStatus())
                 .paymentStatus(paymentStatus)
+                .paymentMethod(paymentMethod)
                 .bookingDate(booking.getBookingDate())
                 .notes(booking.getNotes())
                 .createdAt(booking.getCreatedAt())
@@ -316,11 +319,11 @@ public class MaintenanceBookingService {
     }
 
     private BookingResponse toResponseWithPayment(MaintenanceBooking booking) {
-        PaymentStatus ps = paymentRepository
-                .findTopByReferenceTypeAndReferenceIdOrderByCreatedAtDesc(PaymentReferenceType.BOOKING, booking.getId())
-                .map(Payment::getStatus)
-                .orElse(null);
-        return toResponse(booking, ps);
+    var paymentOpt = paymentRepository
+        .findTopByReferenceTypeAndReferenceIdOrderByCreatedAtDesc(PaymentReferenceType.BOOKING, booking.getId());
+    PaymentStatus ps = paymentOpt.map(Payment::getStatus).orElse(null);
+    PaymentMethod pm = paymentOpt.map(Payment::getMethod).orElse(null);
+    return toResponse(booking, ps, pm);
     }
 
     /**
@@ -347,7 +350,7 @@ public class MaintenanceBookingService {
         payment.setStatus(newStatus);
         paymentRepository.save(payment);
 
-        return toResponse(booking, newStatus);
+        return toResponse(booking, newStatus, payment.getMethod());
     }
 
     /**
@@ -366,5 +369,24 @@ public class MaintenanceBookingService {
             payment.setStatus(PaymentStatus.FREE);
             paymentRepository.save(payment);
         }
+    }
+
+    private void createCashPaymentIfNeeded(MaintenanceBooking booking, PaymentMethod paymentMethod) {
+        if (paymentMethod != PaymentMethod.CASH) {
+            return;
+        }
+        if (booking.getService().getBasePrice().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            return;
+        }
+        Payment payment = new Payment();
+        payment.setReferenceType(PaymentReferenceType.BOOKING);
+        payment.setReferenceId(booking.getId());
+        payment.setReferenceCode(booking.getBookingCode());
+        payment.setAmountVnd(booking.getService().getBasePrice());
+        payment.setAmountUsd(java.math.BigDecimal.ZERO);
+        payment.setCurrency("VND");
+        payment.setMethod(PaymentMethod.CASH);
+        payment.setStatus(PaymentStatus.CREATED);
+        paymentRepository.save(payment);
     }
 }

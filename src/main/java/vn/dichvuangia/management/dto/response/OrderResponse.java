@@ -3,6 +3,7 @@ package vn.dichvuangia.management.dto.response;
 import lombok.Builder;
 import lombok.Getter;
 import vn.dichvuangia.management.common.enums.OrderStatus;
+import vn.dichvuangia.management.common.enums.PaymentMethod;
 import vn.dichvuangia.management.common.enums.PaymentStatus;
 
 import java.math.BigDecimal;
@@ -17,6 +18,7 @@ public class OrderResponse {
     private String orderCode;
     private OrderStatus status;
     private PaymentStatus paymentStatus;
+    private PaymentMethod paymentMethod;
     private BigDecimal totalAmount;
     private String shippingAddress;
     private String notes;

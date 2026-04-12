@@ -149,6 +149,7 @@ public class OrderService {
         order.setTotalAmount(total);
         Order saved = orderRepository.save(order);
         createFreePaymentIfNeeded(saved);
+        createCashPaymentIfNeeded(saved, request.getPaymentMethod());
         return toResponseWithPayment(saved);
     }
 
@@ -200,6 +201,7 @@ public class OrderService {
         order.setTotalAmount(total);
         Order saved = orderRepository.save(order);
         createFreePaymentIfNeeded(saved);
+        createCashPaymentIfNeeded(saved, request.getPaymentMethod());
         return toResponseWithPayment(saved);
     }
 
@@ -345,10 +347,10 @@ public class OrderService {
     }
 
     static OrderResponse toResponse(Order order) {
-        return toResponse(order, null);
+        return toResponse(order, null, null);
     }
 
-    static OrderResponse toResponse(Order order, PaymentStatus paymentStatus) {
+    static OrderResponse toResponse(Order order, PaymentStatus paymentStatus, PaymentMethod paymentMethod) {
         List<OrderItemResponse> items = order.getItems().stream()
                 .map(item -> OrderItemResponse.builder()
                         .id(item.getId())
@@ -366,6 +368,7 @@ public class OrderService {
                 .orderCode(order.getOrderCode())
                 .status(order.getStatus())
                 .paymentStatus(paymentStatus)
+                .paymentMethod(paymentMethod)
                 .totalAmount(order.getTotalAmount())
                 .shippingAddress(order.getShippingAddress())
                 .notes(order.getNotes())
@@ -381,11 +384,11 @@ public class OrderService {
     }
 
     private OrderResponse toResponseWithPayment(Order order) {
-        PaymentStatus ps = paymentRepository
-                .findTopByReferenceTypeAndReferenceIdOrderByCreatedAtDesc(PaymentReferenceType.ORDER, order.getId())
-                .map(Payment::getStatus)
-                .orElse(null);
-        return toResponse(order, ps);
+    var paymentOpt = paymentRepository
+        .findTopByReferenceTypeAndReferenceIdOrderByCreatedAtDesc(PaymentReferenceType.ORDER, order.getId());
+    PaymentStatus ps = paymentOpt.map(Payment::getStatus).orElse(null);
+    PaymentMethod pm = paymentOpt.map(Payment::getMethod).orElse(null);
+    return toResponse(order, ps, pm);
     }
 
     /**
@@ -413,7 +416,7 @@ public class OrderService {
         payment.setStatus(newStatus);
         paymentRepository.save(payment);
 
-        return toResponse(order, newStatus);
+        return toResponse(order, newStatus, payment.getMethod());
     }
 
     private void createFreePaymentIfNeeded(Order order) {
@@ -429,5 +432,24 @@ public class OrderService {
             payment.setStatus(PaymentStatus.FREE);
             paymentRepository.save(payment);
         }
+    }
+
+    private void createCashPaymentIfNeeded(Order order, PaymentMethod paymentMethod) {
+        if (paymentMethod != PaymentMethod.CASH) {
+            return;
+        }
+        if (order.getTotalAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+        Payment payment = new Payment();
+        payment.setReferenceType(PaymentReferenceType.ORDER);
+        payment.setReferenceId(order.getId());
+        payment.setReferenceCode(order.getOrderCode());
+        payment.setAmountVnd(order.getTotalAmount());
+        payment.setAmountUsd(BigDecimal.ZERO);
+        payment.setCurrency("VND");
+        payment.setMethod(PaymentMethod.CASH);
+        payment.setStatus(PaymentStatus.CREATED);
+        paymentRepository.save(payment);
     }
 }

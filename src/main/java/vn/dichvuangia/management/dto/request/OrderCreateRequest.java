@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.Setter;
+import vn.dichvuangia.management.common.enums.PaymentMethod;
 
 import java.util.List;
 
@@ -39,6 +40,9 @@ public class OrderCreateRequest {
 
     @NotBlank(message = "Địa chỉ giao hàng không được để trống")
     private String shippingAddress;
+
+    // Phương thức thanh toán (PAYPAL | CASH). Nếu null sẽ giữ behavior cũ.
+    private PaymentMethod paymentMethod;
 
     // Ghi chú của khách (không bắt buộc)
     private String notes;

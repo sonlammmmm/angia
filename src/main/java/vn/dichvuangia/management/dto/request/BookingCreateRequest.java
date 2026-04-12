@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.Setter;
+import vn.dichvuangia.management.common.enums.PaymentMethod;
 
 import java.time.LocalDateTime;
 
@@ -38,6 +39,9 @@ public class BookingCreateRequest {
     @NotNull(message = "Ngày đặt lịch không được để trống")
     @Future(message = "Ngày đặt lịch phải là ngày trong tương lai")
     private LocalDateTime bookingDate;
+
+    // Phương thức thanh toán (PAYPAL | CASH). Nếu null sẽ giữ behavior cũ.
+    private PaymentMethod paymentMethod;
 
     // Ghi chú của khách (không bắt buộc)
     private String notes;

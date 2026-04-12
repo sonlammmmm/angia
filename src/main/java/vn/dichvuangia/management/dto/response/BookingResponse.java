@@ -3,6 +3,7 @@ package vn.dichvuangia.management.dto.response;
 import lombok.Builder;
 import lombok.Getter;
 import vn.dichvuangia.management.common.enums.BookingStatus;
+import vn.dichvuangia.management.common.enums.PaymentMethod;
 import vn.dichvuangia.management.common.enums.PaymentStatus;
 
 import java.time.LocalDateTime;
@@ -15,6 +16,7 @@ public class BookingResponse {
     private String bookingCode;
     private BookingStatus status;
     private PaymentStatus paymentStatus;
+    private PaymentMethod paymentMethod;
     private LocalDateTime bookingDate;
     private String notes;
     private LocalDateTime createdAt;
