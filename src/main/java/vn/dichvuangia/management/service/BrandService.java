@@ -12,6 +12,10 @@ import vn.dichvuangia.management.entity.Brand;
 import vn.dichvuangia.management.exception.ResourceNotFoundException;
 import vn.dichvuangia.management.repository.BrandRepository;
 
+/**
+ * Service quản lý thương hiệu (brand).
+ * - CRUD + soft delete
+ */
 @Service
 @RequiredArgsConstructor
 @SuppressWarnings("null")

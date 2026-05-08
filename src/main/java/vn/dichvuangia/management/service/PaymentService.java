@@ -24,6 +24,11 @@ import vn.dichvuangia.management.repository.PaymentRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
+/**
+ * Service xử lý thanh toán PayPal.
+ * - Tạo giao dịch PayPal cho order/booking
+ * - Execute và cập nhật trạng thái thanh toán
+ */
 @Service
 @RequiredArgsConstructor
 public class PaymentService {

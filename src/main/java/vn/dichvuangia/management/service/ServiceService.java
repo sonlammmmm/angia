@@ -11,6 +11,10 @@ import vn.dichvuangia.management.dto.response.ServiceResponse;
 import vn.dichvuangia.management.exception.ResourceNotFoundException;
 import vn.dichvuangia.management.repository.ServiceRepository;
 
+/**
+ * Service quản lý dịch vụ bảo trì.
+ * - CRUD + soft delete
+ */
 @Service
 @RequiredArgsConstructor
 @SuppressWarnings("null")

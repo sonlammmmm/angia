@@ -21,6 +21,12 @@ import vn.dichvuangia.management.repository.MaintenanceBookingRepository;
 import vn.dichvuangia.management.repository.RoleRepository;
 import vn.dichvuangia.management.repository.UserRepository;
 
+/**
+ * Service quản lý khách hàng.
+ * - Tra cứu, tạo, cập nhật khách hàng
+ * - Hỗ trợ khách tự quản lý hồ sơ (customers/me)
+ * - Liên kết lịch bảo trì của khách
+ */
 @Service
 @RequiredArgsConstructor
 @SuppressWarnings("null")

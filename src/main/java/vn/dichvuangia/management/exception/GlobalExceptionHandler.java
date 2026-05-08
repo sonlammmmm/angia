@@ -122,7 +122,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneral(Exception ex) {
-        log.error("Unhandled exception [{}]: {}", ex.getClass().getName(), ex.getMessage(), ex);
+        // ⚠️ SECURITY: Chỉ log exception type, không log stack traces
+        log.error("Unhandled exception [{}]", ex.getClass().getSimpleName());
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error("Đã xảy ra lỗi hệ thống, vui lòng thử lại sau", "INTERNAL_ERROR"));

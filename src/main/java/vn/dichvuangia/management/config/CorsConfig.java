@@ -21,11 +21,19 @@ public class CorsConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         // Đọc danh sách origins từ properties (có thể là comma-separated)
-        List<String> origins = Arrays.asList(allowedOrigins.split(","));
+        // ⚠️ SECURITY: Chỉ cho phép origins cụ thể, KHÔNG dùng wildcard
+        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .toList();
         config.setAllowedOrigins(origins);
 
+        // ⚠️ SECURITY: Chỉ cho phép HTTP methods cần thiết
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
+        
+        // ⚠️ SECURITY: Chỉ cho phép headers cần thiết, không dùng wildcard
+        config.setAllowedHeaders(List.of("Content-Type", "Authorization", "X-Requested-With"));
+        config.setExposedHeaders(List.of("Authorization"));
+        
         config.setAllowCredentials(true); // BẮT BUỘC để HttpOnly Cookie hoạt động
         config.setMaxAge(3600L);
 

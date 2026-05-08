@@ -34,6 +34,12 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Random;
 
+/**
+ * Service xử lý lịch bảo trì.
+ * - Tạo lịch (khách đã đăng nhập hoặc khách vãng lai)
+ * - Gán kỹ thuật viên, hoàn thành, hủy
+ * - Tạo payment record cho booking
+ */
 @Service
 @RequiredArgsConstructor
 @SuppressWarnings("null")

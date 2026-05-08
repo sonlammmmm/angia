@@ -12,6 +12,11 @@ import java.nio.file.StandardCopyOption;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * Service lưu trữ file upload (ảnh) vào thư mục local.
+ * - Validate kích thước và định dạng
+ * - Sinh tên file an toàn
+ */
 @Service
 public class FileStorageService {
 

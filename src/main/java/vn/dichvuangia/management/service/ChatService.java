@@ -24,7 +24,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Service xử lý toàn bộ logic chat realtime:
+ * Service xử lý toàn bộ logic chat realtime.
  * - Quản lý conversation (tạo, đóng, assign)
  * - Gửi/nhận tin nhắn
  * - Auto-assign admin (admin ít tải nhất)

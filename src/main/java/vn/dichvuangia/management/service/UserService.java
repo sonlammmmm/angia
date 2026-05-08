@@ -19,6 +19,12 @@ import vn.dichvuangia.management.repository.CustomerRepository;
 import vn.dichvuangia.management.repository.RoleRepository;
 import vn.dichvuangia.management.repository.UserRepository;
 
+/**
+ * Service quản lý tài khoản nhân viên.
+ * - CRUD user (ADMIN/MANAGEMENT)
+ * - Khóa/mở khóa tài khoản
+ * - Kiểm soát gán role ADMIN
+ */
 @Service
 @RequiredArgsConstructor
 @SuppressWarnings("null")

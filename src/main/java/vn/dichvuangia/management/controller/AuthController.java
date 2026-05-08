@@ -156,10 +156,10 @@ public class AuthController {
     private ResponseCookie buildRefreshCookie(String value, long maxAge) {
         return ResponseCookie.from(REFRESH_COOKIE, value)
                 .httpOnly(true)
-                .secure(false)     // đổi thành true khi deploy HTTPS
+                .secure(true)      // HTTPS required in production
                 .path("/")
                 .maxAge(maxAge)
-                .sameSite("Lax")
+                .sameSite("Strict")  // Strict CSRF protection
                 .build();
     }
 }

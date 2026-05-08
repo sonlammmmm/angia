@@ -38,6 +38,12 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
+/**
+ * Service xử lý đơn hàng.
+ * - Tạo đơn (staff/sale và khách vãng lai)
+ * - Cập nhật trạng thái theo state machine
+ * - Tạo payment record cho đơn hàng
+ */
 @Service
 @RequiredArgsConstructor
 @SuppressWarnings("null")

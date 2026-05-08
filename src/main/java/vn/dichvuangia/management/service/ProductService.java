@@ -25,6 +25,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Service quản lý sản phẩm.
+ * - CRUD sản phẩm + soft delete
+ * - Quản lý ảnh và thông số kỹ thuật (specsJson)
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

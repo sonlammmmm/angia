@@ -39,9 +39,25 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                 String token = authHeader.substring(7);
                 try {
                     Jwt jwt = jwtDecoder.decode(token);
+                    
+                    // ⚠️ SECURITY: Null safety checks for JWT claims
                     String username = jwt.getSubject();
+                    if (username == null || username.isBlank()) {
+                        log.warn("WebSocket CONNECT: JWT subject is empty");
+                        throw new IllegalArgumentException("Invalid JWT: missing subject");
+                    }
+                    
                     Long userId = jwt.getClaim("userId");
+                    if (userId == null) {
+                        log.warn("WebSocket CONNECT: JWT missing userId claim");
+                        throw new IllegalArgumentException("Invalid JWT: missing userId");
+                    }
+                    
                     String scope = jwt.getClaim("scope"); // "ROLE_ADMIN", "ROLE_CUSTOMER"...
+                    if (scope == null || scope.isBlank()) {
+                        log.warn("WebSocket CONNECT: JWT missing scope claim");
+                        throw new IllegalArgumentException("Invalid JWT: missing scope");
+                    }
 
                     var authorities = List.of(new SimpleGrantedAuthority(scope));
                     var authentication = new UsernamePasswordAuthenticationToken(

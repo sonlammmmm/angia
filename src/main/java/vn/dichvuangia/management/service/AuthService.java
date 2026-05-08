@@ -37,6 +37,12 @@ import java.util.Collections;
 import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * Service xác thực & cấp token.
+ * - Đăng ký, đăng nhập, refresh token
+ * - Đăng nhập Google
+ * - Đổi mật khẩu, logout
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -190,8 +196,6 @@ public class AuthService {
      */
     private GoogleIdToken.Payload verifyGoogleToken(String idTokenString) {
         try {
-            log.debug("Verifying Google ID token, clientId={}", googleClientId);
-            log.debug("ID token (first 50 chars): {}", idTokenString.substring(0, Math.min(50, idTokenString.length())));
 
             GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
                     new NetHttpTransport(), GsonFactory.getDefaultInstance())
@@ -203,7 +207,6 @@ public class AuthService {
                 log.error("GoogleIdTokenVerifier.verify() returned null — token invalid or audience mismatch. Expected audience: {}", googleClientId);
                 throw new IllegalArgumentException("Google ID token không hợp lệ");
             }
-            log.debug("Google token verified successfully, email={}", idToken.getPayload().getEmail());
             return idToken.getPayload();
         } catch (IllegalArgumentException e) {
             throw e;

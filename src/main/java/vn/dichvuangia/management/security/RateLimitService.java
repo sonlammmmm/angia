@@ -1,6 +1,9 @@
 package vn.dichvuangia.management.security;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import lombok.RequiredArgsConstructor;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -14,6 +17,7 @@ public class RateLimitService {
     private final Clock clock; // Clock để kiểm soát thời gian (testable)
     private final Map<String, RateLimitBucket> buckets = new ConcurrentHashMap<>(); // Lưu bucket theo key
 
+    @Autowired
     public RateLimitService(RateLimitProperties properties) { // Constructor mặc định
         this(properties, Clock.systemUTC()); // Dùng UTC clock
     }
@@ -41,7 +45,10 @@ public class RateLimitService {
 
             if (bucket.count >= properties.getMaxRequests()) { // Nếu vượt giới hạn
                 long resetAtEpochSeconds = (bucket.windowStartMillis + windowMillis) / 1000L; // Thời điểm reset
-                long retryAfter = Math.max(0, resetAtEpochSeconds - Instant.ofEpochMilli(nowMillis).getEpochSecond()); // Số giây cần chờ
+                long retryAfter = Math.max(0, resetAtEpochSeconds - Instant.ofEpochMilli(nowMillis).getEpochSecond()); // Số
+                                                                                                                       // giây
+                                                                                                                       // cần
+                                                                                                                       // chờ
                 return new RateLimitResult(false, 0, retryAfter, resetAtEpochSeconds); // Trả về bị chặn
             }
 
