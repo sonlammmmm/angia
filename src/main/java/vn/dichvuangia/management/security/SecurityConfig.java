@@ -15,7 +15,6 @@ import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -36,135 +35,146 @@ import java.util.Base64;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final UserDetailsServiceImpl userDetailsService;
-    private final CorsConfigurationSource corsConfigurationSource;
-    private final RateLimitFilter rateLimitFilter;
-    private final SecurityHeadersFilter securityHeadersFilter;
+        private final UserDetailsServiceImpl userDetailsService;
+        private final CorsConfigurationSource corsConfigurationSource;
+        private final RateLimitFilter rateLimitFilter;
+        private final SecurityHeadersFilter securityHeadersFilter;
 
-    @Value("${app.jwt.secret}")
-    private String jwtSecret;
+        @Value("${app.jwt.secret}")
+        private String jwtSecret;
 
-    // ── Beans cốt lõi ──────────────────────────────────────────────────────────
+        // ── Beans cốt lõi ──────────────────────────────────────────────────────────
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+        @Bean
+        public PasswordEncoder passwordEncoder() {
+                return new BCryptPasswordEncoder();
+        }
 
-    @Bean
-    public JwtDecoder jwtDecoder() {
-        SecretKeySpec secretKey = new SecretKeySpec(
-                Base64.getDecoder().decode(jwtSecret), "HmacSHA256");
-        return NimbusJwtDecoder.withSecretKey(secretKey).build();
-    }
+        @Bean
+        public JwtDecoder jwtDecoder() {
+                SecretKeySpec secretKey = new SecretKeySpec(
+                                Base64.getDecoder().decode(jwtSecret), "HmacSHA256");
+                return NimbusJwtDecoder.withSecretKey(secretKey).build();
+        }
 
-    @Bean
-    public JwtEncoder jwtEncoder() {
-        SecretKeySpec secretKey = new SecretKeySpec(
-                Base64.getDecoder().decode(jwtSecret), "HmacSHA256");
-        // Phải set algorithm HS256, nếu không NimbusJwtEncoder không chọn được key
-        var jwk = new OctetSequenceKey.Builder(secretKey)
-                .algorithm(com.nimbusds.jose.JWSAlgorithm.HS256)
-                .build();
-        JWKSource<SecurityContext> jwkSource = new ImmutableJWKSet<>(new JWKSet(jwk));
-        return new NimbusJwtEncoder(jwkSource);
-    }
+        @Bean
+        public JwtEncoder jwtEncoder() {
+                SecretKeySpec secretKey = new SecretKeySpec(
+                                Base64.getDecoder().decode(jwtSecret), "HmacSHA256");
+                // Phải set algorithm HS256, nếu không NimbusJwtEncoder không chọn được key
+                var jwk = new OctetSequenceKey.Builder(secretKey)
+                                .algorithm(com.nimbusds.jose.JWSAlgorithm.HS256)
+                                .build();
+                JWKSource<SecurityContext> jwkSource = new ImmutableJWKSet<>(new JWKSet(jwk));
+                return new NimbusJwtEncoder(jwkSource);
+        }
 
-    @Bean
-    @SuppressWarnings("deprecation") // Spring Security 6.5: constructor/setter deprecated — dùng tạm cho đồ án
-    public AuthenticationManager authenticationManager() {
-        var provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService);
-        provider.setPasswordEncoder(passwordEncoder());
-        return new ProviderManager(provider);
-    }
+        @Bean
+        @SuppressWarnings("deprecation") // Spring Security 6.5: constructor/setter deprecated — dùng tạm cho đồ án
+        public AuthenticationManager authenticationManager() {
+                var provider = new DaoAuthenticationProvider();
+                provider.setUserDetailsService(userDetailsService);
+                provider.setPasswordEncoder(passwordEncoder());
+                return new ProviderManager(provider);
+        }
 
-    // ── JWT Authority Converter ──────────────────────────────────────────────
-    // Mặc định Spring thêm prefix "SCOPE_" khi đọc claim "scope".
-    // Vì JWT đã chứa "ROLE_ADMIN", ta bỏ prefix để hasRole("ADMIN") match đúng.
+        // ── JWT Authority Converter ──────────────────────────────────────────────
+        // Mặc định Spring thêm prefix "SCOPE_" khi đọc claim "scope".
+        // Vì JWT đã chứa "ROLE_ADMIN", ta bỏ prefix để hasRole("ADMIN") match đúng.
 
-    @Bean
-    public JwtAuthenticationConverter jwtAuthenticationConverter() {
-        var grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-        grantedAuthoritiesConverter.setAuthorityPrefix(""); // bỏ prefix "SCOPE_"
+        @Bean
+        public JwtAuthenticationConverter jwtAuthenticationConverter() {
+                var grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
+                grantedAuthoritiesConverter.setAuthorityPrefix(""); // bỏ prefix "SCOPE_"
 
-        var jwtConverter = new JwtAuthenticationConverter();
-        jwtConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
-        return jwtConverter;
-    }
+                var jwtConverter = new JwtAuthenticationConverter();
+                jwtConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
+                return jwtConverter;
+        }
 
-    // ── Security Filter Chain ──────────────────────────────────────────────────
+        // ── Security Filter Chain ──────────────────────────────────────────────────
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        return http
-                .csrf(csrf -> csrf
-                        .csrfTokenRepository(org.springframework.security.web.csrf.CookieCsrfTokenRepository.withHttpOnlyFalse())
-                        .csrfTokenRequestHandler(new org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler())
-                        .ignoringRequestMatchers("/auth/**", "/guest/**", "/ws/**", "/swagger-ui/**", "/v3/api-docs/**")
-                )
-                .cors(cors -> cors.configurationSource(corsConfigurationSource))
-                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        // Public
-                        .requestMatchers("/auth/register", "/auth/login", "/auth/refresh", "/auth/logout", "/auth/google").permitAll()
-                        .requestMatchers("/auth/change-password").authenticated()
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/products/**", "/brands/**", "/services/**").permitAll()
-                        // /files/** requires authentication
+        @Bean
+        public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+                return http
+                                .csrf(csrf -> csrf
+                                                .csrfTokenRepository(
+                                                                org.springframework.security.web.csrf.CookieCsrfTokenRepository
+                                                                                .withHttpOnlyFalse())
+                                                .csrfTokenRequestHandler(
+                                                                new org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler())
+                                                .ignoringRequestMatchers("/auth/**", "/guest/**", "/ws/**",
+                                                                "/swagger-ui/**", "/v3/api-docs/**"))
+                                .cors(cors -> cors.configurationSource(corsConfigurationSource))
+                                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                .authorizeHttpRequests(auth -> auth
+                                                // Public
+                                                .requestMatchers("/auth/register", "/auth/login", "/auth/refresh",
+                                                                "/auth/logout", "/auth/google")
+                                                .permitAll()
+                                                .requestMatchers("/auth/change-password").authenticated()
+                                                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/products/**", "/brands/**",
+                                                                "/services/**")
+                                                .permitAll()
+                                                // /files/** requires authentication
 
-                        // WebSocket endpoint (xác thực qua STOMP header, không qua HTTP)
-                        .requestMatchers("/ws/**").permitAll()
+                                                // WebSocket endpoint (xác thực qua STOMP header, không qua HTTP)
+                                                .requestMatchers("/ws/**").permitAll()
 
-                        // Guest checkout (khách vãng lai — không cần đăng nhập)
-                        .requestMatchers("/guest/**").permitAll()
+                                                // Guest checkout (khách vãng lai — không cần đăng nhập)
+                                                .requestMatchers("/guest/**").permitAll()
 
+                                                // Admin + Management: quản lý tài khoản nhân viên
+                                                .requestMatchers("/users/**").hasAnyRole("ADMIN", "MANAGEMENT")
+                                                .requestMatchers(HttpMethod.DELETE, "/**").hasRole("ADMIN")
 
-                        // Admin + Management: quản lý tài khoản nhân viên
-                        .requestMatchers("/users/**").hasAnyRole("ADMIN", "MANAGEMENT")
-                        .requestMatchers(HttpMethod.DELETE, "/**").hasRole("ADMIN")
+                                                // Admin + Management: quản lý sản phẩm, thương hiệu, dịch vụ
+                                                .requestMatchers(HttpMethod.POST, "/products/**", "/brands/**",
+                                                                "/services/**")
+                                                .hasAnyRole("ADMIN", "MANAGEMENT")
+                                                .requestMatchers(HttpMethod.PUT, "/products/**", "/brands/**",
+                                                                "/services/**")
+                                                .hasAnyRole("ADMIN", "MANAGEMENT")
 
-                        // Admin + Management: quản lý sản phẩm, thương hiệu, dịch vụ
-                        .requestMatchers(HttpMethod.POST, "/products/**", "/brands/**", "/services/**")
-                                .hasAnyRole("ADMIN", "MANAGEMENT")
-                        .requestMatchers(HttpMethod.PUT, "/products/**", "/brands/**", "/services/**")
-                                .hasAnyRole("ADMIN", "MANAGEMENT")
+                                                // Quản lý khách hàng: ADMIN, MANAGEMENT, SALE (không cho CUSTOMER xem
+                                                // danh sách)
+                                                .requestMatchers(HttpMethod.GET, "/customers/me").authenticated()
+                                                .requestMatchers(HttpMethod.PUT, "/customers/me").authenticated()
+                                                .requestMatchers("/customers/**")
+                                                .hasAnyRole("ADMIN", "MANAGEMENT", "SALE")
 
-                        // Quản lý khách hàng: ADMIN, MANAGEMENT, SALE (không cho CUSTOMER xem danh sách)
-                        .requestMatchers(HttpMethod.GET, "/customers/me").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/customers/me").authenticated()
-                        .requestMatchers("/customers/**").hasAnyRole("ADMIN", "MANAGEMENT", "SALE")
+                                                // Booking: gán kỹ thuật viên (ADMIN, MANAGEMENT)
+                                                .requestMatchers("/maintenance-bookings/*/assign")
+                                                .hasAnyRole("ADMIN", "MANAGEMENT")
 
-                        // Booking: gán kỹ thuật viên (ADMIN, MANAGEMENT)
-                        .requestMatchers("/maintenance-bookings/*/assign")
-                                .hasAnyRole("ADMIN", "MANAGEMENT")
+                                                // Booking: hoàn thành (ADMIN, TECHNICIAN)
+                                                .requestMatchers("/maintenance-bookings/*/complete")
+                                                .hasAnyRole("ADMIN", "TECHNICIAN")
 
-                        // Booking: hoàn thành (ADMIN, TECHNICIAN)
-                        .requestMatchers("/maintenance-bookings/*/complete")
-                                .hasAnyRole("ADMIN", "TECHNICIAN")
+                                                // Booking: hủy (ADMIN, MANAGEMENT, CUSTOMER)
+                                                .requestMatchers("/maintenance-bookings/*/cancel")
+                                                .hasAnyRole("ADMIN", "MANAGEMENT", "CUSTOMER")
 
-                        // Booking: hủy (ADMIN, MANAGEMENT, CUSTOMER)
-                        .requestMatchers("/maintenance-bookings/*/cancel")
-                                .hasAnyRole("ADMIN", "MANAGEMENT", "CUSTOMER")
+                                                // Chat: customer lấy conversation của mình
+                                                .requestMatchers("/chat/my-conversation").hasRole("CUSTOMER")
+                                                // Chat: customer + admin đều cần xem messages
+                                                .requestMatchers(HttpMethod.GET, "/chat/conversations/*/messages")
+                                                .authenticated()
+                                                // Chat: admin-only endpoints (danh sách conversations, takeover, close,
+                                                // online-admins)
+                                                .requestMatchers("/chat/conversations/**", "/chat/online-admins")
+                                                .hasAnyRole("ADMIN", "MANAGEMENT", "SALE")
 
-                        // Chat: customer lấy conversation của mình
-                        .requestMatchers("/chat/my-conversation").hasRole("CUSTOMER")
-                        // Chat: customer + admin đều cần xem messages
-                        .requestMatchers(HttpMethod.GET, "/chat/conversations/*/messages")
-                                .authenticated()
-                        // Chat: admin-only endpoints (danh sách conversations, takeover, close, online-admins)
-                        .requestMatchers("/chat/conversations/**", "/chat/online-admins")
-                                .hasAnyRole("ADMIN", "MANAGEMENT", "SALE")
-
-                        // Tạo đơn hàng & đặt lịch bảo trì: mọi user đã xác thực (bao gồm CUSTOMER)
-                        .anyRequest().authenticated()
-                )
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt
-                        .decoder(jwtDecoder())
-                        .jwtAuthenticationConverter(jwtAuthenticationConverter())
-                ))
-                .addFilterAfter(rateLimitFilter, org.springframework.security.web.authentication.AnonymousAuthenticationFilter.class)
-                .addFilterBefore(securityHeadersFilter, rateLimitFilter.getClass())
-                .build();
-    }
+                                                // Tạo đơn hàng & đặt lịch bảo trì: mọi user đã xác thực (bao gồm
+                                                // CUSTOMER)
+                                                .anyRequest().authenticated())
+                                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt
+                                                .decoder(jwtDecoder())
+                                                .jwtAuthenticationConverter(jwtAuthenticationConverter())))
+                                .addFilterAfter(rateLimitFilter,
+                                                org.springframework.security.web.authentication.AnonymousAuthenticationFilter.class)
+                                .addFilterBefore(securityHeadersFilter, rateLimitFilter.getClass())
+                                .build();
+        }
 }
