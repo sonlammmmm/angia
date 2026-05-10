@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: angia-backend
+    env: docker
+    region: singapore # or ohio, frankfurt, oregon
+    plan: free # or starter, pro, etc.
+    dockerfilePath: ./Dockerfile
+    # healthCheckPath: /actuator/health # Uncomment if you add spring-boot-starter-actuator
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      # Add other environment variables like DB credentials, Google OAuth client secrets, etc.
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
