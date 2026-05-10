@@ -12,11 +12,10 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import vn.dichvuangia.management.config.TestSecurityConfig;
 import vn.dichvuangia.management.dto.request.ServiceCreateRequest;
 import vn.dichvuangia.management.dto.request.ServiceUpdateRequest;
 import vn.dichvuangia.management.dto.response.ServiceResponse;
-import vn.dichvuangia.management.security.SecurityConfig;
-import vn.dichvuangia.management.security.UserDetailsServiceImpl;
 import vn.dichvuangia.management.service.ServiceService;
 
 import java.math.BigDecimal;
@@ -31,7 +30,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ServiceController.class)
-@Import(SecurityConfig.class)
+@Import(TestSecurityConfig.class)
 @DisplayName("ServiceController Tests")
 class ServiceControllerTest {
 
@@ -43,9 +42,6 @@ class ServiceControllerTest {
 
     @MockitoBean
     private ServiceService serviceService;
-
-    @MockitoBean
-    private UserDetailsServiceImpl userDetailsService;
 
     private ServiceResponse sampleService() {
         return ServiceResponse.builder()

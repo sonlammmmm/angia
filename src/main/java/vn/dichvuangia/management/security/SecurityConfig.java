@@ -98,7 +98,11 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
-                .csrf(AbstractHttpConfigurer::disable)
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(org.springframework.security.web.csrf.CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(new org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler())
+                        .ignoringRequestMatchers("/auth/**", "/guest/**", "/ws/**", "/swagger-ui/**", "/v3/api-docs/**")
+                )
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
@@ -107,14 +111,14 @@ public class SecurityConfig {
                         .requestMatchers("/auth/change-password").authenticated()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/products/**", "/brands/**", "/services/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/files/**").permitAll()
+                        // /files/** requires authentication
 
                         // WebSocket endpoint (xác thực qua STOMP header, không qua HTTP)
                         .requestMatchers("/ws/**").permitAll()
 
                         // Guest checkout (khách vãng lai — không cần đăng nhập)
                         .requestMatchers("/guest/**").permitAll()
-                        .requestMatchers("/paypal/**").permitAll()
+
 
                         // Admin + Management: quản lý tài khoản nhân viên
                         .requestMatchers("/users/**").hasAnyRole("ADMIN", "MANAGEMENT")

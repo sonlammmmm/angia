@@ -17,7 +17,6 @@ import vn.dichvuangia.management.repository.ServiceRepository;
  */
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class ServiceService {
 
     private final ServiceRepository serviceRepository;

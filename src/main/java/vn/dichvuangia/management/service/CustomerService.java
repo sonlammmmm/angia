@@ -29,7 +29,6 @@ import vn.dichvuangia.management.repository.UserRepository;
  */
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
@@ -98,6 +97,10 @@ public class CustomerService {
 
             if (userRepository.existsByUsername(request.getUsername())) {
                 throw new IllegalArgumentException("Tên đăng nhập '" + request.getUsername() + "' đã tồn tại");
+            }
+            
+            if (!isValidPassword(request.getPassword())) {
+                throw new IllegalArgumentException("Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt");
             }
 
             Role customerRole = roleRepository.findByName("CUSTOMER")
@@ -240,5 +243,9 @@ public class CustomerService {
                 .createdById(customer.getCreatedBy() != null ? customer.getCreatedBy().getId() : null)
                 .createdByUsername(customer.getCreatedBy() != null ? customer.getCreatedBy().getUsername() : null)
                 .build();
+    }
+
+    private boolean isValidPassword(String password) {
+        return password != null && password.matches("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!]).{8,}$");
     }
 }

@@ -13,11 +13,10 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import vn.dichvuangia.management.common.enums.ProductType;
+import vn.dichvuangia.management.config.TestSecurityConfig;
 import vn.dichvuangia.management.dto.request.ProductCreateRequest;
 import vn.dichvuangia.management.dto.request.ProductUpdateRequest;
 import vn.dichvuangia.management.dto.response.ProductResponse;
-import vn.dichvuangia.management.security.SecurityConfig;
-import vn.dichvuangia.management.security.UserDetailsServiceImpl;
 import vn.dichvuangia.management.service.ProductService;
 
 import java.math.BigDecimal;
@@ -32,7 +31,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ProductController.class)
-@Import(SecurityConfig.class)
+@Import(TestSecurityConfig.class)
 @DisplayName("ProductController Tests")
 class ProductControllerTest {
 
@@ -44,9 +43,6 @@ class ProductControllerTest {
 
     @MockitoBean
     private ProductService productService;
-
-    @MockitoBean
-    private UserDetailsServiceImpl userDetailsService;
 
     private ProductResponse sampleProduct() {
         return ProductResponse.builder()

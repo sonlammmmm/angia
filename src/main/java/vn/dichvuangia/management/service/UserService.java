@@ -27,7 +27,6 @@ import vn.dichvuangia.management.repository.UserRepository;
  */
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class UserService {
 
     private final UserRepository userRepository;
@@ -54,6 +53,11 @@ public class UserService {
         Role role = findRoleById(request.getRoleId());
         validateRoleAssignment(role);
 
+        if (!isValidPassword(request.getPassword())) {
+            throw new IllegalArgumentException(
+                    "Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt");
+        }
+
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
@@ -71,6 +75,10 @@ public class UserService {
             user.setFullName(request.getFullName().isBlank() ? null : request.getFullName().trim());
         }
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            if (!isValidPassword(request.getPassword())) {
+                throw new IllegalArgumentException(
+                        "Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt");
+            }
             user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         }
         if (request.getRoleId() != null) {
@@ -152,5 +160,9 @@ public class UserService {
                 .isActive(user.getIsActive())
                 .createdAt(user.getCreatedAt())
                 .build();
+    }
+
+    private boolean isValidPassword(String password) {
+        return password != null && password.matches("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!]).{8,}$");
     }
 }

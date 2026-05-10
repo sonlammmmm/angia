@@ -49,14 +49,6 @@ public class Payment {
     @Column(name = "status", nullable = false, length = 20)
     private PaymentStatus status;
 
-    @Column(name = "paypal_payment_id", length = 120)
-    private String paypalPaymentId;
-
-    @Column(name = "paypal_payer_id", length = 120)
-    private String paypalPayerId;
-
-    @Column(name = "approval_url", length = 512)
-    private String approvalUrl;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

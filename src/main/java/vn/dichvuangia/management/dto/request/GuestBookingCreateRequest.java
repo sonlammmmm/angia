@@ -34,7 +34,7 @@ public class GuestBookingCreateRequest {
     @Future(message = "Ngày đặt lịch phải là ngày trong tương lai")
     private LocalDateTime bookingDate;
 
-    // Phương thức thanh toán (PAYPAL | CASH). Nếu null sẽ giữ behavior cũ.
+    // Phương thức thanh toán (CASH | FREE). Nếu null sẽ giữ behavior cũ.
     private PaymentMethod paymentMethod;
 
     private String notes;

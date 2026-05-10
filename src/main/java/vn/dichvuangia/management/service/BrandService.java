@@ -18,7 +18,6 @@ import vn.dichvuangia.management.repository.BrandRepository;
  */
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class BrandService {
 
     private final BrandRepository brandRepository;

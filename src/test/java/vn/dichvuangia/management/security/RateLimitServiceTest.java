@@ -16,15 +16,16 @@ class RateLimitServiceTest {
     @DisplayName("Giới hạn request và reset sau 1 giờ")
     void rateLimit_resetsAfterWindow() {
         RateLimitProperties properties = new RateLimitProperties();
+        properties.setEnabled(true);
         properties.setMaxRequests(2);
         properties.setWindowSeconds(3600);
 
         MutableClock clock = new MutableClock(Instant.parse("2026-04-13T00:00:00Z"));
         RateLimitService service = new RateLimitService(properties, clock);
 
-        RateLimitResult first = service.checkAndIncrement("ip:127.0.0.1");
-        RateLimitResult second = service.checkAndIncrement("ip:127.0.0.1");
-        RateLimitResult third = service.checkAndIncrement("ip:127.0.0.1");
+        RateLimitResult first = service.checkAndIncrement("ip:127.0.0.1", properties.getMaxRequests(), properties.getWindowSeconds());
+        RateLimitResult second = service.checkAndIncrement("ip:127.0.0.1", properties.getMaxRequests(), properties.getWindowSeconds());
+        RateLimitResult third = service.checkAndIncrement("ip:127.0.0.1", properties.getMaxRequests(), properties.getWindowSeconds());
 
         assertThat(first.allowed()).isTrue();
         assertThat(second.allowed()).isTrue();
@@ -32,7 +33,7 @@ class RateLimitServiceTest {
         assertThat(third.retryAfterSeconds()).isEqualTo(3600);
 
         clock.advance(Duration.ofHours(1));
-        RateLimitResult afterReset = service.checkAndIncrement("ip:127.0.0.1");
+        RateLimitResult afterReset = service.checkAndIncrement("ip:127.0.0.1", properties.getMaxRequests(), properties.getWindowSeconds());
 
         assertThat(afterReset.allowed()).isTrue();
     }

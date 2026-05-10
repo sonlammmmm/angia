@@ -46,7 +46,6 @@ import java.util.Set;
  */
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class OrderService {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");

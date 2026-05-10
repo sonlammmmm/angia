@@ -3,8 +3,6 @@ package vn.dichvuangia.management.security;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import lombok.RequiredArgsConstructor;
-
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Map;
@@ -27,15 +25,15 @@ public class RateLimitService {
         this.clock = clock; // Gán clock
     }
 
-    public RateLimitResult checkAndIncrement(String key) { // Kiểm tra và tăng bộ đếm
+    public RateLimitResult checkAndIncrement(String key, int maxRequests, long windowSeconds) { // Kiểm tra và tăng bộ đếm
         if (!properties.isEnabled()) { // Nếu tắt rate limit thì luôn cho phép
-            long resetAt = Instant.now(clock).getEpochSecond() + properties.getWindowSeconds(); // Tính mốc reset giả
-            return new RateLimitResult(true, properties.getMaxRequests(), 0, resetAt); // Trả về cho phép
+            long resetAt = Instant.now(clock).getEpochSecond() + windowSeconds; // Tính mốc reset giả
+            return new RateLimitResult(true, maxRequests, 0, resetAt); // Trả về cho phép
         }
 
         synchronized (this) { // Đồng bộ để tránh race condition
             long nowMillis = Instant.now(clock).toEpochMilli(); // Thời gian hiện tại (ms)
-            long windowMillis = properties.getWindowSeconds() * 1000L; // Độ dài cửa sổ (ms)
+            long windowMillis = windowSeconds * 1000L; // Độ dài cửa sổ (ms)
             RateLimitBucket bucket = buckets.get(key); // Lấy bucket theo key
 
             if (bucket == null || nowMillis - bucket.windowStartMillis >= windowMillis) { // Nếu chưa có hoặc hết cửa sổ
@@ -43,7 +41,7 @@ public class RateLimitService {
                 buckets.put(key, bucket); // Lưu bucket
             }
 
-            if (bucket.count >= properties.getMaxRequests()) { // Nếu vượt giới hạn
+            if (bucket.count >= maxRequests) { // Nếu vượt giới hạn
                 long resetAtEpochSeconds = (bucket.windowStartMillis + windowMillis) / 1000L; // Thời điểm reset
                 long retryAfter = Math.max(0, resetAtEpochSeconds - Instant.ofEpochMilli(nowMillis).getEpochSecond()); // Số
                                                                                                                        // giây
@@ -53,7 +51,7 @@ public class RateLimitService {
             }
 
             bucket.count += 1; // Tăng bộ đếm
-            int remaining = Math.max(0, properties.getMaxRequests() - bucket.count); // Tính còn lại
+            int remaining = Math.max(0, maxRequests - bucket.count); // Tính còn lại
             long resetAtEpochSeconds = (bucket.windowStartMillis + windowMillis) / 1000L; // Mốc reset
             return new RateLimitResult(true, remaining, 0, resetAtEpochSeconds); // Trả về cho phép
         }

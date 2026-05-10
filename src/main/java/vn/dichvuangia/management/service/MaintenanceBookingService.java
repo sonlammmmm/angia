@@ -42,7 +42,6 @@ import java.util.Random;
  */
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class MaintenanceBookingService {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");

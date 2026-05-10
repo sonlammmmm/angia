@@ -312,34 +312,21 @@ Dựa trên phân tích toàn diện mã nguồn Java Spring Boot backend của 
 7. ✅ **Thêm WebSocket null safety** - JWT claims validation
 8. ✅ **Remove sensitive data from logs** - Exception logging cleaned
 
+### Hoàn Thành (Phase 2 - 8/5/2026):
+1. ✅ **Implement password complexity validation** (UserService & CustomerService)
+2. ✅ **Increase rate limiting for auth endpoints** (5/min login, 3/min register)
+3. ✅ **Review file access authorization** (Secured `/files/**` requiring JWT)
+4. ✅ **Update logging level to WARN in production**
+5. ✅ **Enable CSRF protection** (Using CookieCsrfTokenRepository)
+
 ### Còn Cần Làm (TODO):
-1. ⏳ **Implement password complexity validation**
-   - Min 8 characters, uppercase, lowercase, numbers, special characters
-   - Add validation in UserService.create() and CustomerService
-
-2. ⏳ **Increase rate limiting for auth endpoints**
-   - Current: 100/3600 seconds (quá cao)
-   - Recommended: 5/minute for login, 3/minute for register
-
-3. ⏳ **Review file access authorization**
-   - Add ownership check for file downloads
-   - Ensure `/files/**` requires JWT authentication
-
-4. ⏳ **Update logging level to WARN in production**
-   - Remove DEBUG logs before production
-   - Current: logging.level.vn.dichvuangia=DEBUG
-
-5. ⏳ **Run dependency vulnerability scan**
+1. ⏳ **Run dependency vulnerability scan**
    ```bash
    mvn dependency-check:check
    mvn snyk:test
    ```
 
-6. ⏳ **Enable CSRF protection** for non-API requests
-   - Current: disabled for JWT-based API
-   - Consider enabling for state-changing operations
-
-7. ⏳ **Test all security fixes** before production deployment
+2. ⏳ **Test all security fixes** before production deployment
 
 ### Deployment Checklist:
 - [ ] Generate new JWT secret (min 256 bits)

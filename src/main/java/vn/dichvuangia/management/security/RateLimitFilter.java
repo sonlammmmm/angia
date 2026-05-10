@@ -39,9 +39,22 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
 
         String key = resolveRateLimitKey(request); // Xác định key theo user/IP
-        RateLimitResult result = rateLimitService.checkAndIncrement(key); // Kiểm tra & tăng bộ đếm
+        
+        int maxRequests = properties.getMaxRequests();
+        long windowSeconds = properties.getWindowSeconds();
+        
+        String uri = request.getRequestURI();
+        if (uri.contains("/auth/login")) {
+            maxRequests = 5;
+            windowSeconds = 60;
+        } else if (uri.contains("/auth/register")) {
+            maxRequests = 3;
+            windowSeconds = 60;
+        }
+        
+        RateLimitResult result = rateLimitService.checkAndIncrement(key, maxRequests, windowSeconds); // Kiểm tra & tăng bộ đếm
 
-        response.setHeader("X-RateLimit-Limit", String.valueOf(properties.getMaxRequests())); // Tổng số request tối đa
+        response.setHeader("X-RateLimit-Limit", String.valueOf(maxRequests)); // Tổng số request tối đa
         response.setHeader("X-RateLimit-Remaining", String.valueOf(result.remaining())); // Số request còn lại
         response.setHeader("X-RateLimit-Reset", String.valueOf(result.resetAtEpochSeconds())); // Mốc reset cửa sổ
 

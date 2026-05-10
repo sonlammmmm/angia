@@ -41,7 +41,7 @@ public class OrderCreateRequest {
     @NotBlank(message = "Địa chỉ giao hàng không được để trống")
     private String shippingAddress;
 
-    // Phương thức thanh toán (PAYPAL | CASH). Nếu null sẽ giữ behavior cũ.
+    // Phương thức thanh toán (CASH). Nếu null sẽ giữ behavior cũ.
     private PaymentMethod paymentMethod;
 
     // Ghi chú của khách (không bắt buộc)
