@@ -1,8 +1,9 @@
 spring:
   datasource:
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:3306/angia
-    username: ${MYSQL_USER:root}
-    password: ${MYSQL_PASSWORD:slam7424}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://gateway01.ap-southeast-1.prod.alicloud.tidbcloud.com:4000/angia?sslMode=VERIFY_IDENTITY&enabledTLSProtocols=TLSv1.2,TLSv1.3}
+    username: ${SPRING_DATASOURCE_USERNAME:bYqbf3LmSCzn2Rt.root}
+    password: ${SPRING_DATASOURCE_PASSWORD:pscK75bBF3Z27w2V}
+    driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
       ddl-auto: update
