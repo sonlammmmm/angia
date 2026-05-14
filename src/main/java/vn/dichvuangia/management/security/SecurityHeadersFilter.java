@@ -32,11 +32,12 @@ public class SecurityHeadersFilter extends OncePerRequestFilter {
         // CSP: Strict Content Security Policy to prevent XSS
         response.setHeader("Content-Security-Policy", 
             "default-src 'self'; " +
-            "script-src 'self'; " +
-            "style-src 'self' 'unsafe-inline'; " +
+            "script-src 'self' https://accounts.google.com; " +
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
             "img-src 'self' data: https:; " +
-            "font-src 'self'; " +
-            "connect-src 'self'; " +
+            "font-src 'self' https://fonts.gstatic.com; " +
+            "connect-src 'self' https://accounts.google.com; " +
+            "frame-src 'self' https://accounts.google.com https://www.google.com https://www.google.com/maps; " +
             "frame-ancestors 'none'; " +
             "base-uri 'self'; " +
             "form-action 'self'");

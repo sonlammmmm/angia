@@ -15,7 +15,10 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "products") // Bảng sản phẩm
+@Table(name = "products", indexes = {
+        @Index(name = "idx_products_deleted_type_brand", columnList = "is_deleted,product_type,brand_id"),
+        @Index(name = "idx_products_deleted_stock", columnList = "is_deleted,stock_quantity")
+})
 public class Product {
 
     @Id
@@ -45,15 +48,12 @@ public class Product {
     @Column(name = "price", nullable = false, precision = 12, scale = 2)
     private BigDecimal price;
 
-    // Tháng bảo hành — dùng cho MACHINE
     @Column(name = "warranty_months")
     private Integer warrantyMonths;
 
-    // Tuổi thọ tháng — KEY FIELD tính lịch bảo trì — dùng cho FILTER
     @Column(name = "lifespan_months")
     private Integer lifespanMonths;
 
-    // Số lượng tồn kho
     @Column(name = "stock_quantity", nullable = false)
     private Integer stockQuantity = 0;
 

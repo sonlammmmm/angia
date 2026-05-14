@@ -39,6 +39,10 @@ rules/
 *.env
 !.env.example
 
+### Application properties/secrets ###
+application-*.yml
+application-*.properties
+
 app.log
 run-dev.ps1
 test-api.ps1

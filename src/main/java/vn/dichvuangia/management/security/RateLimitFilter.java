@@ -17,77 +17,89 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
-@Component // Filter rate limit cho toàn bộ HTTP request
+@Component
 public class RateLimitFilter extends OncePerRequestFilter {
 
-    private final RateLimitService rateLimitService; // Service xử lý logic rate limit
-    private final RateLimitProperties properties; // Cấu hình rate limit
-    private final ObjectMapper objectMapper; // Serialize JSON response khi bị chặn
+    private static final String LOGIN_PATH = "/auth/login";
+    private static final String REGISTER_PATH = "/auth/register";
+    private static final String REFRESH_PATH = "/auth/refresh";
 
-    public RateLimitFilter(RateLimitService rateLimitService, RateLimitProperties properties, ObjectMapper objectMapper) { // Constructor inject
-        this.rateLimitService = rateLimitService; // Gán service
-        this.properties = properties; // Gán cấu hình
-        this.objectMapper = objectMapper; // Gán ObjectMapper
+    private final RateLimitService rateLimitService;
+    private final RateLimitProperties properties;
+    private final ObjectMapper objectMapper;
+
+    public RateLimitFilter(RateLimitService rateLimitService, RateLimitProperties properties, ObjectMapper objectMapper) {
+        this.rateLimitService = rateLimitService;
+        this.properties = properties;
+        this.objectMapper = objectMapper;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        if (!properties.isEnabled()) { // Nếu tắt rate limit thì cho qua
-            filterChain.doFilter(request, response); // Tiếp tục filter chain
-            return; // Kết thúc filter
+        if (!properties.isEnabled()) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
-        String key = resolveRateLimitKey(request); // Xác định key theo user/IP
-        
+        String key = resolveRateLimitKey(request);
+
         int maxRequests = properties.getMaxRequests();
         long windowSeconds = properties.getWindowSeconds();
-        
-        String uri = request.getRequestURI();
-        if (uri.contains("/auth/login")) {
-            maxRequests = 5;
-            windowSeconds = 60;
-        } else if (uri.contains("/auth/register")) {
-            maxRequests = 3;
-            windowSeconds = 60;
-        }
-        
-        RateLimitResult result = rateLimitService.checkAndIncrement(key, maxRequests, windowSeconds); // Kiểm tra & tăng bộ đếm
 
-        response.setHeader("X-RateLimit-Limit", String.valueOf(maxRequests)); // Tổng số request tối đa
-        response.setHeader("X-RateLimit-Remaining", String.valueOf(result.remaining())); // Số request còn lại
-        response.setHeader("X-RateLimit-Reset", String.valueOf(result.resetAtEpochSeconds())); // Mốc reset cửa sổ
-
-        if (!result.allowed()) { // Nếu vượt limit
-            response.setStatus(429); // HTTP 429 Too Many Requests
-            response.setHeader("Retry-After", String.valueOf(result.retryAfterSeconds())); // Thời gian cần chờ
-            response.setContentType(MediaType.APPLICATION_JSON_VALUE); // Trả JSON
-
-            Map<String, Object> body = new HashMap<>(); // Body response
-            body.put("status", "error"); // Trạng thái lỗi
-            body.put("message", "Rate limit exceeded. Try again in 1 hour."); // Thông báo
-            body.put("retryAfterSeconds", result.retryAfterSeconds()); // Số giây cần chờ
-            body.put("resetAt", Instant.ofEpochSecond(result.resetAtEpochSeconds()).toString()); // Thời điểm reset
-
-            objectMapper.writeValue(response.getOutputStream(), body); // Ghi JSON ra output
-            return; // Kết thúc filter khi bị chặn
+        String path = request.getServletPath();
+        if (LOGIN_PATH.equals(path)) {
+            maxRequests = properties.getLoginMaxRequests();
+            windowSeconds = properties.getLoginWindowSeconds();
+        } else if (REGISTER_PATH.equals(path)) {
+            maxRequests = properties.getRegisterMaxRequests();
+            windowSeconds = properties.getRegisterWindowSeconds();
+        } else if (REFRESH_PATH.equals(path)) {
+            maxRequests = properties.getRefreshMaxRequests();
+            windowSeconds = properties.getRefreshWindowSeconds();
         }
 
-        filterChain.doFilter(request, response); // Cho phép request đi tiếp
+        RateLimitResult result = rateLimitService.checkAndIncrement(key, maxRequests, windowSeconds);
+
+        response.setHeader("X-RateLimit-Limit", String.valueOf(maxRequests));
+        response.setHeader("X-RateLimit-Remaining", String.valueOf(result.remaining()));
+        response.setHeader("X-RateLimit-Reset", String.valueOf(result.resetAtEpochSeconds()));
+
+        if (!result.allowed()) {
+            response.setStatus(429);
+            response.setHeader("Retry-After", String.valueOf(result.retryAfterSeconds()));
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+
+            Map<String, Object> body = new HashMap<>();
+            body.put("status", "error");
+            body.put("message", "Rate limit exceeded. Try again in " + result.retryAfterSeconds() + " seconds.");
+            body.put("retryAfterSeconds", result.retryAfterSeconds());
+            body.put("resetAt", Instant.ofEpochSecond(result.resetAtEpochSeconds()).toString());
+
+            objectMapper.writeValue(response.getOutputStream(), body);
+            return;
+        }
+
+        filterChain.doFilter(request, response);
     }
 
-    private String resolveRateLimitKey(HttpServletRequest request) { // Xác định key theo user/IP
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication(); // Lấy auth hiện tại
+    private String resolveRateLimitKey(HttpServletRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.isAuthenticated()
-                && !(authentication instanceof AnonymousAuthenticationToken)) { // Nếu đã đăng nhập
-            return "user:" + authentication.getName(); // Key theo username
+                && !(authentication instanceof AnonymousAuthenticationToken)) {
+            return "user:" + authentication.getName();
         }
 
-        String forwardedFor = request.getHeader("X-Forwarded-For"); // Lấy IP proxy nếu có
-        if (forwardedFor != null && !forwardedFor.isBlank()) { // Nếu có header
-            return "ip:" + forwardedFor.split(",")[0].trim(); // Lấy IP đầu tiên
+        if (properties.isTrustForwardedFor()) {
+            String forwardedFor = request.getHeader("X-Forwarded-For");
+            if (forwardedFor != null && !forwardedFor.isBlank()) {
+                String firstHop = forwardedFor.split(",")[0].trim();
+                if (!firstHop.isBlank()) {
+                    return "ip:" + firstHop;
+                }
+            }
         }
 
-        return "ip:" + request.getRemoteAddr(); // Fallback dùng IP trực tiếp
+        return "ip:" + request.getRemoteAddr();
     }
 }

@@ -15,7 +15,11 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "orders") // Bảng đơn hàng
+@Table(name = "orders", indexes = {
+        @Index(name = "idx_orders_status_created_at", columnList = "status,created_at"),
+        @Index(name = "idx_orders_sale_status_created_at", columnList = "sale_id,status,created_at"),
+        @Index(name = "idx_orders_customer_created_at", columnList = "customer_id,created_at")
+})
 public class Order {
 
     @Id
@@ -29,7 +33,6 @@ public class Order {
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
-    // Sale chốt đơn
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sale_id")
     private User sale;

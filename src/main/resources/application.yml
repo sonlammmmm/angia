@@ -28,7 +28,13 @@ app:
     enabled: true
     max-requests: 100
     window-seconds: 3600
+    login-max-requests: 5
+    login-window-seconds: 60
+    register-max-requests: 3
+    register-window-seconds: 60
+    refresh-max-requests: 10
+    refresh-window-seconds: 60
+    trust-forwarded-for: false
+    max-buckets: 100000
   google:
     client-id: ${GOOGLE_CLIENT_ID:}
-
-

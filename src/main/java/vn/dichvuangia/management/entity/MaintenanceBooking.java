@@ -12,7 +12,11 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "maintenance_bookings") // Bảng đặt lịch bảo trì
+@Table(name = "maintenance_bookings", indexes = {
+        @Index(name = "idx_bookings_status_booking_date", columnList = "status,booking_date"),
+        @Index(name = "idx_bookings_technician_status_booking_date", columnList = "technician_id,status,booking_date"),
+        @Index(name = "idx_bookings_customer_created_at", columnList = "customer_id,created_at")
+})
 public class MaintenanceBooking {
 
     @Id

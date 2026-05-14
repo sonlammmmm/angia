@@ -9,27 +9,25 @@ import vn.dichvuangia.management.common.enums.ConversationStatus;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
-/**
- * Entity đại diện cho một cuộc hội thoại (ticket) giữa khách hàng và admin.
- * Mỗi khách hàng tại một thời điểm chỉ có tối đa 1 conversation ACTIVE/WAITING.
- */
 @Getter
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "conversations")
+@Table(name = "conversations", indexes = {
+        @Index(name = "idx_conversations_customer_status", columnList = "customer_id,status"),
+        @Index(name = "idx_conversations_status_last_message_at", columnList = "status,last_message_at"),
+        @Index(name = "idx_conversations_admin_status_last_message_at", columnList = "assigned_admin_id,status,last_message_at")
+})
 public class Conversation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** Khách hàng (User có role CUSTOMER) tạo conversation */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)
     private User customer;
 
-    /** Admin/Management/Sale được gán xử lý (có thể null nếu đang waiting) */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_admin_id")
     private User assignedAdmin;
@@ -38,19 +36,15 @@ public class Conversation {
     @Column(name = "status", nullable = false, length = 20)
     private ConversationStatus status = ConversationStatus.WAITING;
 
-    /** Nội dung tin nhắn cuối cùng (để hiển thị preview) */
     @Column(name = "last_message", columnDefinition = "TEXT")
     private String lastMessage;
 
-    /** Thời điểm tin nhắn cuối */
     @Column(name = "last_message_at")
     private LocalDateTime lastMessageAt;
 
-    /** Số tin nhắn chưa đọc bởi admin */
     @Column(name = "unread_count_admin", nullable = false)
     private Integer unreadCountAdmin = 0;
 
-    /** Số tin nhắn chưa đọc bởi customer */
     @Column(name = "unread_count_customer", nullable = false)
     private Integer unreadCountCustomer = 0;
 

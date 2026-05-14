@@ -4,6 +4,12 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:bYqbf3LmSCzn2Rt.root}
     password: ${SPRING_DATASOURCE_PASSWORD:pscK75bBF3Z27w2V}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:80}
+      minimum-idle: ${DB_POOL_MIN_IDLE:20}
+      connection-timeout: ${DB_POOL_CONNECTION_TIMEOUT_MS:30000}
+      max-lifetime: ${DB_POOL_MAX_LIFETIME_MS:1800000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT_MS:600000}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -19,6 +25,12 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
   upload:
     dir: ${UPLOAD_DIR:/var/www/angia/uploads}
+  rate-limit:
+    enabled: ${RATE_LIMIT_ENABLED:true}
+    max-requests: ${RATE_LIMIT_MAX_REQUESTS:100}
+    window-seconds: ${RATE_LIMIT_WINDOW_SECONDS:3600}
+    trust-forwarded-for: ${RATE_LIMIT_TRUST_FORWARDED_FOR:false}
+    max-buckets: ${RATE_LIMIT_MAX_BUCKETS:100000}
 
 logging:
   level:
@@ -27,4 +39,10 @@ logging:
   file:
     name: /var/log/angia/app-prod.log
 
-
+server:
+  tomcat:
+    threads:
+      max: ${TOMCAT_THREADS_MAX:400}
+      min-spare: ${TOMCAT_THREADS_MIN_SPARE:50}
+    accept-count: ${TOMCAT_ACCEPT_COUNT:1000}
+    max-connections: ${TOMCAT_MAX_CONNECTIONS:20000}

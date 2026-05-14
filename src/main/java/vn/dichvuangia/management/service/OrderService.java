@@ -224,15 +224,15 @@ public class OrderService {
         validateTransition(current, next);
 
         if (next == OrderStatus.COMPLETED) {
-            // Trừ tồn kho khi hoàn thành đơn
+            // Atomic update in DB to prevent oversell under concurrent requests.
             for (OrderItem item : order.getItems()) {
-                Product product = item.getProduct();
-                int newStock = product.getStockQuantity() - item.getQuantity();
-                if (newStock < 0) {
-                    throw new InsufficientStockException(product.getName(), product.getStockQuantity());
+                int updated = productRepository.decrementStockIfEnough(
+                        item.getProduct().getId(), item.getQuantity());
+                if (updated == 0) {
+                    Product latest = productRepository.findByIdAndIsDeletedFalse(item.getProduct().getId())
+                            .orElseThrow(() -> new ResourceNotFoundException("Product", item.getProduct().getId()));
+                    throw new InsufficientStockException(latest.getName(), latest.getStockQuantity());
                 }
-                product.setStockQuantity(newStock);
-                productRepository.save(product);
             }
         }
 
@@ -447,3 +447,4 @@ public class OrderService {
         paymentRepository.save(payment);
     }
 }
+

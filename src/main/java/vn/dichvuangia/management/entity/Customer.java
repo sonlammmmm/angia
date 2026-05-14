@@ -12,7 +12,9 @@ import java.util.Objects;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "customers") // Bảng khách hàng
+@Table(name = "customers", indexes = {
+        @Index(name = "idx_customers_created_by", columnList = "created_by")
+})
 public class Customer {
 
     @Id
@@ -37,7 +39,6 @@ public class Customer {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    // Sale/nhân viên tạo hồ sơ
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     private User createdBy;

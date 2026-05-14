@@ -15,7 +15,9 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "payments")
+@Table(name = "payments", indexes = {
+        @Index(name = "idx_payments_ref_type_ref_id_created", columnList = "reference_type,reference_id,created_at")
+})
 public class Payment {
 
     @Id
